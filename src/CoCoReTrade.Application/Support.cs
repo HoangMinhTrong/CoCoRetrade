@@ -11,10 +11,12 @@ public interface ISupportRepository
 {
     Task<T> InTransactionAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken);
     Task<SupportTicket?> FindAsync(Guid id, CancellationToken cancellationToken);
+    Task<string?> OwnerIdAsync(Guid id, CancellationToken cancellationToken);
     Task<IReadOnlyList<SupportTicketRow>> ListAsync(string? ownerId, CancellationToken cancellationToken);
     Task<SupportTicketRow?> RowAsync(Guid id, CancellationToken cancellationToken);
     Task<IReadOnlyList<string>> AdminIdsAsync(CancellationToken cancellationToken);
     void Add(SupportTicket ticket);
+    void AddMessage(SupportMessage message);
     void AddNotification(MarketplaceNotification notification);
     void AddAudit(AuditLog audit);
     Task SaveAsync(CancellationToken cancellationToken);
@@ -22,6 +24,7 @@ public interface ISupportRepository
 
 public interface ISupportService
 {
+    Task<bool> CanAccessAsync(Guid id, string actorId, CancellationToken cancellationToken);
     Task<SupportTicketDetails> CreateAsync(string userId, string subject, string body, CancellationToken cancellationToken);
     Task<IReadOnlyList<SupportTicketRow>> MineAsync(string userId, CancellationToken cancellationToken);
     Task<IReadOnlyList<SupportTicketRow>> AdminQueueAsync(string adminId, CancellationToken cancellationToken);
@@ -30,9 +33,24 @@ public interface ISupportService
     Task<SupportTicketDetails> CloseAsync(Guid id, string adminId, CancellationToken cancellationToken);
 }
 
-public sealed class SupportService(ISupportRepository repository, IStaffPermissionChecker permissions,
-    TimeProvider clock) : ISupportService
+public interface ISupportRealtimePublisher
 {
+    Task PublishChangedAsync(Guid ticketId, CancellationToken cancellationToken);
+}
+
+public sealed class SupportService(ISupportRepository repository, IStaffPermissionChecker permissions,
+    TimeProvider clock, ISupportRealtimePublisher realtime) : ISupportService
+{
+    public async Task<bool> CanAccessAsync(Guid id, string actorId, CancellationToken ct)
+    {
+        if (id == Guid.Empty || string.IsNullOrWhiteSpace(actorId)) return false;
+        var ownerId = await repository.OwnerIdAsync(id, ct);
+        if (ownerId is null) return false;
+        if (ownerId == actorId) return true;
+        try { await permissions.EnsureAsync(actorId, StaffPermissions.ManageUsers, ct); return true; }
+        catch (UnauthorizedAccessException) { return false; }
+    }
+
     public Task<SupportTicketDetails> CreateAsync(string userId, string subject, string body, CancellationToken ct)
     {
         RequireUser(userId);
@@ -64,16 +82,17 @@ public sealed class SupportService(ISupportRepository repository, IStaffPermissi
             await permissions.EnsureAsync(actorId, StaffPermissions.ManageUsers, ct);
         return await ToDetailsAsync(ticket, ct);
     }
-    public Task<SupportTicketDetails> ReplyAsync(Guid id, string actorId, string body, CancellationToken ct)
+    public async Task<SupportTicketDetails> ReplyAsync(Guid id, string actorId, string body, CancellationToken ct)
     {
         RequireUser(actorId);
-        return repository.InTransactionAsync(async () =>
+        var result = await repository.InTransactionAsync(async () =>
         {
             var ticket = await repository.FindAsync(id, ct) ?? throw new KeyNotFoundException("Yêu cầu hỗ trợ không tồn tại.");
             var isAdminReply = ticket.UserId != actorId;
             if (isAdminReply) await permissions.EnsureAsync(actorId, StaffPermissions.ManageUsers, ct);
             var now = clock.GetUtcNow().UtcDateTime;
-            ticket.Reply(actorId, body, now);
+            var message = ticket.Reply(actorId, body, now);
+            repository.AddMessage(message);
             if (isAdminReply)
             {
                 repository.AddNotification(Notice(ticket.UserId, $"CoCo đã trả lời yêu cầu: {ticket.Subject}.", now));
@@ -84,11 +103,13 @@ public sealed class SupportService(ISupportRepository repository, IStaffPermissi
             await repository.SaveAsync(ct);
             return await ToDetailsAsync(ticket, ct);
         }, ct);
+        await realtime.PublishChangedAsync(id, CancellationToken.None);
+        return result;
     }
-    public Task<SupportTicketDetails> CloseAsync(Guid id, string adminId, CancellationToken ct)
+    public async Task<SupportTicketDetails> CloseAsync(Guid id, string adminId, CancellationToken ct)
     {
         RequireUser(adminId);
-        return repository.InTransactionAsync(async () =>
+        var result = await repository.InTransactionAsync(async () =>
         {
             await permissions.EnsureAsync(adminId, StaffPermissions.ManageUsers, ct);
             var ticket = await repository.FindAsync(id, ct) ?? throw new KeyNotFoundException("Yêu cầu hỗ trợ không tồn tại.");
@@ -100,6 +121,8 @@ public sealed class SupportService(ISupportRepository repository, IStaffPermissi
             await repository.SaveAsync(ct);
             return await ToDetailsAsync(ticket, ct);
         }, ct);
+        await realtime.PublishChangedAsync(id, CancellationToken.None);
+        return result;
     }
 
     private async Task<SupportTicketDetails> ToDetailsAsync(SupportTicket ticket, CancellationToken ct)

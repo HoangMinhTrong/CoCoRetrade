@@ -21,6 +21,9 @@ public sealed class ConversationRepository(AppDbContext db) : IConversationRepos
         db.Conversations.FirstOrDefaultAsync(x => x.ProductId == productId && x.BuyerId == buyerId, ct);
     public Task<Conversation?> ByIdAsync(Guid id, CancellationToken ct) =>
         db.Conversations.FirstOrDefaultAsync(x => x.Id == id, ct);
+    public Task<bool> IsParticipantAsync(Guid id, string userId, CancellationToken ct) =>
+        db.Conversations.AsNoTracking().AnyAsync(x => x.Id == id &&
+            (x.BuyerId == userId || x.SellerId == userId), ct);
     public Task<ConversationMessage?> LastFromAsync(Guid id, string senderId, CancellationToken ct) =>
         db.ConversationMessages.AsNoTracking().Where(x => x.ConversationId == id && x.SenderId == senderId)
             .OrderByDescending(x => x.CreatedAtUtc).FirstOrDefaultAsync(ct);
@@ -32,14 +35,20 @@ public sealed class ConversationRepository(AppDbContext db) : IConversationRepos
         return messages;
     }
     public async Task<IReadOnlyList<ConversationSummary>> ListAsync(string userId, CancellationToken ct) =>
-        await QuerySummaries(userId).OrderByDescending(x => x.LastMessageAtUtc).Take(100).ToListAsync(ct);
+        await QuerySummaries(VisibleConversations(userId)
+            .OrderByDescending(x => x.LastMessageAtUtc).Take(100), userId).ToListAsync(ct);
     public Task<ConversationSummary?> SummaryAsync(Guid id, string userId, CancellationToken ct) =>
-        QuerySummaries(userId).FirstOrDefaultAsync(x => x.Id == id, ct);
-    private IQueryable<ConversationSummary> QuerySummaries(string userId) =>
-        from conversation in db.Conversations.AsNoTracking()
+        QuerySummaries(VisibleConversations(userId).Where(x => x.Id == id), userId)
+            .FirstOrDefaultAsync(ct);
+
+    private IQueryable<Conversation> VisibleConversations(string userId) =>
+        db.Conversations.AsNoTracking()
+            .Where(x => x.BuyerId == userId || x.SellerId == userId);
+
+    private IQueryable<ConversationSummary> QuerySummaries(IQueryable<Conversation> conversations, string userId) =>
+        from conversation in conversations
         join buyer in db.Users.AsNoTracking() on conversation.BuyerId equals buyer.Id
         join seller in db.Users.AsNoTracking() on conversation.SellerId equals seller.Id
-        where conversation.BuyerId == userId || conversation.SellerId == userId
         select new ConversationSummary(conversation.Id, conversation.ProductId,
             conversation.ProductSku, conversation.ProductName,
             conversation.BuyerId == userId ? seller.FullName : buyer.FullName,

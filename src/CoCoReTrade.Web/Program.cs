@@ -1,5 +1,6 @@
 using CoCoReTrade.Application;
 using CoCoReTrade.Infrastructure;
+using CoCoReTrade.Web.Realtime;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -46,6 +47,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 builder.Services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.Zero);
 builder.Services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
+builder.Services.AddSignalR();
 builder.Services.AddAuthorization(options =>
 {
     foreach (var permission in new[] { StaffPermissions.ReadPending, StaffPermissions.Inspect,
@@ -70,14 +72,18 @@ builder.Services.AddScoped<ICartRepository, CartRepository>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
 builder.Services.AddScoped<IConversationService, ConversationService>();
+builder.Services.AddSingleton<IConversationRealtimePublisher, SignalRConversationRealtimePublisher>();
 builder.Services.AddScoped<ISupportRepository, SupportRepository>();
 builder.Services.AddScoped<ISupportService, SupportService>();
+builder.Services.AddSingleton<ISupportRealtimePublisher, SignalRSupportRealtimePublisher>();
 builder.Services.AddScoped<IAddressRepository, AddressRepository>();
 builder.Services.AddScoped<IAddressBookService, AddressBookService>();
 builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
 builder.Services.AddScoped<IUserProfileService, UserProfileService>();
 builder.Services.AddScoped<INotificationCenterRepository, NotificationCenterRepository>();
 builder.Services.AddScoped<INotificationCenter, NotificationCenter>();
+builder.Services.AddScoped<IUnreadCountsRepository, UnreadCountsRepository>();
+builder.Services.AddScoped<IUnreadCountsService, UnreadCountsService>();
 builder.Services.AddScoped<IProductCodeSequence, SqlProductCodeSequence>();
 builder.Services.AddScoped<IProductCodeService, ProductCodeService>();
 builder.Services.AddScoped<IStaffPermissionChecker, StaffPermissionChecker>();
@@ -183,6 +189,8 @@ app.Use(async (context, next) =>
     await next();
 });
 app.UseAuthorization();
+app.MapHub<ConversationHub>("/hubs/conversations");
+app.MapHub<SupportHub>("/hubs/support");
 app.MapControllers();
 app.MapControllerRoute("areas", "{area:exists}/{controller=Inspection}/{action=Index}/{id?}");
 app.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");

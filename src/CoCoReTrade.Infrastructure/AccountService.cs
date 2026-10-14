@@ -18,9 +18,13 @@ public sealed class AccountService(UserManager<ApplicationUser> users, SignInMan
             FullName = request.FullName.Trim(), EmailConfirmed = false };
         var result = await users.CreateAsync(user, request.Password);
         if (!result.Succeeded) return new(false, string.Join(" ", result.Errors.Select(x => x.Description)));
-        await users.AddToRoleAsync(user, "User");
-        var token = await users.GenerateEmailConfirmationTokenAsync(user);
-        return new(true, Token: token, UserId: user.Id, Email: email);
+        var roleResult = await users.AddToRoleAsync(user, "User");
+        if (!roleResult.Succeeded)
+        {
+            await users.DeleteAsync(user);
+            return new(false, "Không thể hoàn tất tạo tài khoản. Vui lòng thử lại.");
+        }
+        return new(true, UserId: user.Id, Email: email);
     }
     public async Task<AccountActionResult> ConfirmEmailAsync(string userId, string token)
     {
@@ -47,8 +51,7 @@ public sealed class AccountService(UserManager<ApplicationUser> users, SignInMan
         var key = identifier.Trim().ToLowerInvariant();
         var user = await users.FindByEmailAsync(key) ?? await users.Users.FirstOrDefaultAsync(x => x.PhoneNumber == key);
         if (user is null || !user.EmailConfirmed) return new(true);
-        var token = await users.GeneratePasswordResetTokenAsync(user);
-        return new(true, Token: token, UserId: user.Id, Email: user.Email);
+        return new(true, UserId: user.Id, Email: user.Email);
     }
     public async Task<AccountActionResult> FindUnconfirmedAsync(string identifier)
     {

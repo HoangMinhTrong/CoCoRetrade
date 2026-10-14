@@ -62,7 +62,7 @@ public sealed class OffersController(IOfferService offers, IProductService produ
             TempData["Message"] = "Đã cập nhật đề xuất giá.";
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or UnauthorizedAccessException or DbUpdateException)
-        { TempData["Error"] = ex.Message; }
+        { TempData["Error"] = ex.Message.Split('\n')[0].TrimEnd('\r'); }
         return RedirectToAction(nameof(Details), new { id });
     }
 }

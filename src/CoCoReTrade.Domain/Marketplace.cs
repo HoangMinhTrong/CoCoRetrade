@@ -254,24 +254,43 @@ public sealed class Offer
     public void Counter(string actorId, decimal price, decimal minimumPrice, int usedBuyerOffers, ProductStatus productStatus, DateTime nowUtc)
     {
         EnsureAction(actorId, productStatus, nowUtc);
-        if (price != decimal.Truncate(price)) throw new ArgumentOutOfRangeException(nameof(price), "Price must be a whole VND amount.");
+        if (price != decimal.Truncate(price)) throw new ArgumentOutOfRangeException(nameof(price), "Giá phải là số nguyên VNĐ.");
+        if (Status == OfferStatus.PendingBuyer && usedBuyerOffers >= 3)
+            throw new InvalidOperationException("Người mua đã dùng hết 3 lượt trả giá cho sản phẩm này.");
+        var range = CounterPriceRange(minimumPrice, usedBuyerOffers);
+        if (range is null)
+            throw new InvalidOperationException("Không còn khoảng giá hợp lệ để đề xuất lại. Bạn có thể chấp nhận hoặc từ chối mức giá hiện tại.");
+        if (price < range.Value.Minimum || price > range.Value.Maximum)
+            throw new ArgumentOutOfRangeException(nameof(price),
+                $"Giá đề xuất lại phải từ {range.Value.Minimum:N0}đ đến {range.Value.Maximum:N0}đ.");
         if (Status == OfferStatus.PendingSeller)
         {
-            if (price <= LastBuyerPrice || price > AskingPrice) throw new ArgumentOutOfRangeException(nameof(price), "Seller counter must be above the buyer price and at most the asking price.");
-            if (LastSellerPrice is not null && price >= LastSellerPrice)
-                throw new ArgumentOutOfRangeException(nameof(price), "Seller counter must improve the previous seller price.");
             LastSellerPrice = price; Status = OfferStatus.PendingBuyer;
             Events.Add(new OfferEvent(Id, actorId, OfferEventAction.SellerCountered, price, nowUtc));
         }
         else
         {
-            if (usedBuyerOffers >= 3) throw new InvalidOperationException("The buyer has used all 3 offers for this product.");
-            if (LastSellerPrice is null || price <= LastBuyerPrice || price >= LastSellerPrice || price < minimumPrice)
-                throw new ArgumentOutOfRangeException(nameof(price), "Buyer counter must be between the last prices and above the minimum.");
             LastBuyerPrice = price; Status = OfferStatus.PendingSeller;
             Events.Add(new OfferEvent(Id, actorId, OfferEventAction.BuyerCountered, price, nowUtc));
         }
         CurrentPrice = price; ExpiresAtUtc = nowUtc.AddHours(24);
+    }
+    public (decimal Minimum, decimal Maximum)? CounterPriceRange(decimal minimumPrice, int usedBuyerOffers)
+    {
+        decimal minimum;
+        decimal maximum;
+        if (Status == OfferStatus.PendingSeller)
+        {
+            minimum = LastBuyerPrice + 1;
+            maximum = LastSellerPrice is null ? AskingPrice : Math.Min(AskingPrice, LastSellerPrice.Value - 1);
+        }
+        else if (Status == OfferStatus.PendingBuyer && usedBuyerOffers < 3 && LastSellerPrice is not null)
+        {
+            minimum = Math.Max(minimumPrice, LastBuyerPrice + 1);
+            maximum = LastSellerPrice.Value - 1;
+        }
+        else return null;
+        return minimum <= maximum ? (minimum, maximum) : null;
     }
     public void UseForOrder(string buyerId, ProductStatus productStatus, DateTime nowUtc)
     {

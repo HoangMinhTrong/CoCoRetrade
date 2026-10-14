@@ -9,7 +9,7 @@ namespace CoCoReTrade.Web.Controllers.Api.V1;
 [ApiController]
 [Authorize]
 [Route("api/v1/orders")]
-public sealed class OrdersController(IOrderService orders) : ControllerBase
+public sealed class OrdersApiController(IOrderService orders) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
     [HttpGet]

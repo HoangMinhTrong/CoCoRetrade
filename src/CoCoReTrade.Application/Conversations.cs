@@ -15,6 +15,7 @@ public interface IConversationRepository
     Task<Product?> ProductAsync(Guid productId, CancellationToken cancellationToken);
     Task<Conversation?> ByProductBuyerAsync(Guid productId, string buyerId, CancellationToken cancellationToken);
     Task<Conversation?> ByIdAsync(Guid id, CancellationToken cancellationToken);
+    Task<bool> IsParticipantAsync(Guid conversationId, string userId, CancellationToken cancellationToken);
     Task<ConversationMessage?> LastFromAsync(Guid conversationId, string senderId, CancellationToken cancellationToken);
     Task<IReadOnlyList<ConversationMessage>> MessagesAsync(Guid conversationId, CancellationToken cancellationToken);
     Task<IReadOnlyList<ConversationSummary>> ListAsync(string userId, CancellationToken cancellationToken);
@@ -29,14 +30,26 @@ public interface IConversationRepository
 public interface IConversationService
 {
     Task<Guid> OpenAsync(Guid productId, string buyerId, CancellationToken cancellationToken);
+    Task<bool> CanAccessAsync(Guid conversationId, string userId, CancellationToken cancellationToken);
     Task<ConversationMessageDto> SendAsync(Guid conversationId, string actorId, string body,
         CancellationToken cancellationToken);
     Task<IReadOnlyList<ConversationSummary>> ListAsync(string userId, CancellationToken cancellationToken);
     Task<ConversationDetails> DetailsAsync(Guid conversationId, string userId, CancellationToken cancellationToken);
 }
 
-public sealed class ConversationService(IConversationRepository repository, TimeProvider clock) : IConversationService
+public interface IConversationRealtimePublisher
 {
+    Task PublishAsync(Guid conversationId, string recipientId, ConversationMessageDto message,
+        CancellationToken cancellationToken);
+}
+
+public sealed class ConversationService(IConversationRepository repository, TimeProvider clock,
+    IConversationRealtimePublisher realtime) : IConversationService
+{
+    public Task<bool> CanAccessAsync(Guid conversationId, string userId, CancellationToken ct) =>
+        string.IsNullOrWhiteSpace(userId) ? Task.FromResult(false) :
+            repository.IsParticipantAsync(conversationId, userId, ct);
+
     public Task<Guid> OpenAsync(Guid productId, string buyerId, CancellationToken ct)
     {
         RequireUser(buyerId);
@@ -62,13 +75,13 @@ public sealed class ConversationService(IConversationRepository repository, Time
         }, ct);
     }
 
-    public Task<ConversationMessageDto> SendAsync(Guid conversationId, string actorId, string body, CancellationToken ct)
+    public async Task<ConversationMessageDto> SendAsync(Guid conversationId, string actorId, string body, CancellationToken ct)
     {
         RequireUser(actorId);
         var message = body?.Trim() ?? string.Empty;
         if (message.Length is < 1 or > 1000)
             throw new ArgumentException("Tin nhắn phải có từ 1 đến 1000 ký tự.");
-        return repository.InTransactionAsync(async () =>
+        var saved = await repository.InTransactionAsync(async () =>
         {
             var conversation = await repository.ByIdAsync(conversationId, ct) ??
                 throw new KeyNotFoundException("Cuộc trò chuyện không tồn tại.");
@@ -92,8 +105,12 @@ public sealed class ConversationService(IConversationRepository repository, Time
                 CreatedAtUtc = now
             });
             await repository.SaveAsync(ct);
-            return new ConversationMessageDto(item.Id, item.SenderId, item.Body, item.CreatedAtUtc, false);
+            return (Message: new ConversationMessageDto(item.Id, item.SenderId, item.Body, item.CreatedAtUtc, false),
+                RecipientId: actorId == conversation.BuyerId ? conversation.SellerId : conversation.BuyerId);
         }, ct);
+        // Broadcast only after the SQL transaction commits. Delivery is best-effort; SQL remains authoritative.
+        await realtime.PublishAsync(conversationId, saved.RecipientId, saved.Message, CancellationToken.None);
+        return saved.Message;
     }
 
     public Task<IReadOnlyList<ConversationSummary>> ListAsync(string userId, CancellationToken ct)

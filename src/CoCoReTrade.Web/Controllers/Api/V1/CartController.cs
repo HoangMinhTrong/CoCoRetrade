@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CoCoReTrade.Web.Controllers.Api.V1;
 
 [ApiController, Authorize, Route("api/v1/cart")]
-public sealed class CartController(ICartService cart) : ControllerBase
+public sealed class CartApiController(ICartService cart) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 

@@ -9,7 +9,7 @@ public sealed record CreateSupportRequest(string Subject, string Body);
 public sealed record ReplySupportRequest(string Body);
 
 [ApiController, Authorize, Route("api/v1/support")]
-public sealed class SupportController(ISupportService support) : ControllerBase
+public sealed class SupportApiController(ISupportService support) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
     [HttpGet]

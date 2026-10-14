@@ -8,7 +8,7 @@ namespace CoCoReTrade.Web.Controllers.Api.V1;
 public sealed record SendMessageRequest(string Body);
 
 [ApiController, Authorize, Route("api/v1/messages")]
-public sealed class MessagesController(IConversationService conversations) : ControllerBase
+public sealed class MessagesApiController(IConversationService conversations) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 

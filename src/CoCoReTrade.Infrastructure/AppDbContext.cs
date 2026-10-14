@@ -285,19 +285,24 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     {
         var tracked = ChangeTracker.Entries<OutboxMessage>()
             .Select(x => (x.Entity.NotificationId, x.Entity.Channel)).ToHashSet();
-        foreach (var entry in ChangeTracker.Entries<MarketplaceNotification>()
-                     .Where(x => x.State == EntityState.Added))
+        var notifications = ChangeTracker.Entries<MarketplaceNotification>()
+            .Where(x => x.State == EntityState.Added)
+            .Select(x => x.Entity)
+            .ToArray();
+        var deliveries = new List<OutboxMessage>();
+        foreach (var notification in notifications)
         {
             foreach (var channel in new[] { "email", "webpush" })
             {
-                if (!tracked.Add((entry.Entity.Id, channel))) continue;
-                OutboxMessages.Add(new OutboxMessage
+                if (!tracked.Add((notification.Id, channel))) continue;
+                deliveries.Add(new OutboxMessage
                 {
-                    NotificationId = entry.Entity.Id, Channel = channel,
-                    CreatedAtUtc = entry.Entity.CreatedAtUtc,
-                    NextAttemptAtUtc = entry.Entity.CreatedAtUtc
+                    NotificationId = notification.Id, Channel = channel,
+                    CreatedAtUtc = notification.CreatedAtUtc,
+                    NextAttemptAtUtc = notification.CreatedAtUtc
                 });
             }
         }
+        OutboxMessages.AddRange(deliveries);
     }
 }

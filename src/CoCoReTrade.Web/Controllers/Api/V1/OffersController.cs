@@ -12,7 +12,7 @@ public sealed record PriceRequest(decimal Price);
 [ApiController]
 [Authorize]
 [Route("api/v1/offers")]
-public sealed class OffersController(IOfferService offers) : ControllerBase
+public sealed class OffersApiController(IOfferService offers) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
     [HttpGet]

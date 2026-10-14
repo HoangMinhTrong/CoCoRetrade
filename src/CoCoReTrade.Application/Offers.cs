@@ -20,7 +20,8 @@ public enum OfferResponse { Accept, Decline, Counter }
 public sealed record OfferEventDto(OfferEventAction Action, string ActorId, decimal? Price, DateTime CreatedAtUtc);
 public sealed record OfferDto(Guid Id, Guid ProductId, string ProductSku, string ProductName, string BuyerId, string SellerId,
     decimal AskingPrice, decimal CurrentPrice, decimal? AcceptedPrice, OfferStatus Status, int BuyerOffersUsed,
-    DateTime CreatedAtUtc, DateTime ExpiresAtUtc, IReadOnlyList<OfferEventDto> Events);
+    DateTime CreatedAtUtc, DateTime ExpiresAtUtc, IReadOnlyList<OfferEventDto> Events,
+    decimal? CounterMinimumPrice = null, decimal? CounterMaximumPrice = null);
 public sealed record NotificationDto(Guid Id, string Category, string Message, Guid? OfferId, Guid? OrderId, bool IsRead, DateTime CreatedAtUtc);
 
 public interface IOfferRepository
@@ -114,10 +115,16 @@ public sealed class OfferService(IOfferRepository repository, MarketplacePolicy 
     private void Notify(string userId, Guid offerId, string message, DateTime nowUtc) =>
         repository.AddNotification(new MarketplaceNotification { Id = Guid.NewGuid(), UserId = userId, OfferId = offerId,
             Category = "offers", Message = message, CreatedAtUtc = nowUtc });
-    private static OfferDto ToDto(Offer x, int used, DateTime nowUtc) => new(x.Id, x.ProductId, x.ProductSku, x.ProductName,
-        x.BuyerId, x.SellerId, x.AskingPrice, x.CurrentPrice, x.AcceptedPrice, x.EffectiveStatus(nowUtc), used,
-        x.CreatedAtUtc, x.ExpiresAtUtc, x.Events.OrderBy(e => e.CreatedAtUtc).Select(e =>
-            new OfferEventDto(e.Action, e.ActorId, e.Price, e.CreatedAtUtc)).ToList());
+    private OfferDto ToDto(Offer x, int used, DateTime nowUtc)
+    {
+        var status = x.EffectiveStatus(nowUtc);
+        var range = status == x.Status ? x.CounterPriceRange(policy.MinimumOffer(x.AskingPrice), used) : null;
+        return new OfferDto(x.Id, x.ProductId, x.ProductSku, x.ProductName,
+            x.BuyerId, x.SellerId, x.AskingPrice, x.CurrentPrice, x.AcceptedPrice, status, used,
+            x.CreatedAtUtc, x.ExpiresAtUtc, x.Events.OrderBy(e => e.CreatedAtUtc).Select(e =>
+                new OfferEventDto(e.Action, e.ActorId, e.Price, e.CreatedAtUtc)).ToList(),
+            range?.Minimum, range?.Maximum);
+    }
 }
 
 public interface IOfferExpirationService

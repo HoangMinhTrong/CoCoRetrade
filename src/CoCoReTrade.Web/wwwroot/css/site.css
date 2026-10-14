@@ -20,3 +20,9 @@ html{font-size:15px}body{background:var(--cream);color:var(--ink);font-family:sy
 .skeleton-line { height: 16px; border-radius: 10px; background: linear-gradient(100deg, #eadad4 25%, #fff7f3 50%, #eadad4 75%); background-size: 200% 100%; animation: skeleton-shift 1.4s ease-in-out infinite; }
 .skeleton-line.short { width: 62%; margin-inline: auto; }
 @keyframes skeleton-shift { to { background-position-x: -200%; } }
+.unread-link { position: relative; }
+.unread-count { position: absolute; z-index: 1; display: inline-flex; align-items: center; justify-content: center; min-width: 1.2rem; height: 1.2rem; padding: 0 .25rem; border-radius: 999px; background: #c53752; color: #fff; font: 700 .65rem/1 Arial, sans-serif; box-shadow: 0 0 0 2px #fff; }
+.unread-count[hidden] { display: none; }
+.header-actions .unread-count { top: -.4rem; right: -.3rem; }
+.bottom-nav .nav-icon { position: relative; }
+.bottom-nav .unread-count { top: -.45rem; right: -.95rem; box-shadow: 0 0 0 2px #fff; }

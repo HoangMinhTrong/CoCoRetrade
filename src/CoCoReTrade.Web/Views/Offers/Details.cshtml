@@ -1,7 +1,7 @@
 @model OfferDto
 @{ ViewData["Title"] = "Offer " + Model.ProductSku; var me = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
    var myTurn = (Model.Status == OfferStatus.PendingSeller && me == Model.SellerId) || (Model.Status == OfferStatus.PendingBuyer && me == Model.BuyerId);
-   var buyerCanCounter = me != Model.BuyerId || Model.BuyerOffersUsed < 3; }
+   var canCounter = Model.CounterMinimumPrice.HasValue && Model.CounterMaximumPrice.HasValue; }
 <div class="mt-4 mb-3"><a asp-action="Index">← Tất cả đề xuất giá</a></div>
 <div class="row g-4 mb-5"><div class="col-lg-7"><div class="panel">
     <div class="d-flex justify-content-between align-items-start gap-2"><div><div class="eyebrow">@Model.ProductSku</div><h1 class="page-title mt-1 mb-1">@Model.ProductName</h1></div><span class="status-pill @Model.Status">@Model.Status</span></div>
@@ -22,9 +22,25 @@
             <form asp-action="Respond" asp-route-id="@Model.Id" method="post"><input type="hidden" name="action" value="Accept" /><button class="btn btn-wine" type="submit">Chấp nhận</button></form>
             <form asp-action="Respond" asp-route-id="@Model.Id" method="post"><input type="hidden" name="action" value="Decline" /><button class="btn btn-outline-danger" type="submit">Từ chối</button></form>
         </div>
-        @if (buyerCanCounter)
+        @if (canCounter)
         {
-            <form asp-action="Respond" asp-route-id="@Model.Id" method="post" class="mt-3"><input type="hidden" name="action" value="Counter" /><label for="counterPrice" class="form-label">Đề xuất lại</label><div class="input-group"><input id="counterPrice" name="price" type="number" min="1" step="1" required class="form-control" placeholder="Nhập mức giá thỏa hiệp" /><button class="btn btn-outline-wine" type="submit">Gửi giá mới</button></div></form>
+            <form asp-action="Respond" asp-route-id="@Model.Id" method="post" class="mt-3">
+                <input type="hidden" name="action" value="Counter" />
+                <label for="counterPrice" class="form-label">Đề xuất lại</label>
+                <div class="input-group">
+                    <input id="counterPrice" name="price" type="number" min="@Model.CounterMinimumPrice.GetValueOrDefault().ToString("0", System.Globalization.CultureInfo.InvariantCulture)" max="@Model.CounterMaximumPrice.GetValueOrDefault().ToString("0", System.Globalization.CultureInfo.InvariantCulture)" step="1" required class="form-control" placeholder="Nhập mức giá thỏa hiệp" />
+                    <button class="btn btn-outline-wine" type="submit">Gửi giá mới</button>
+                </div>
+                <div class="form-text">Mức hợp lệ: từ <strong>@Model.CounterMinimumPrice.GetValueOrDefault().ToString("N0")đ</strong> đến <strong>@Model.CounterMaximumPrice.GetValueOrDefault().ToString("N0")đ</strong>. Giá niêm yết: @Model.AskingPrice.ToString("N0")đ.</div>
+            </form>
+        }
+        else if (me == Model.BuyerId && Model.BuyerOffersUsed >= 3)
+        {
+            <div class="alert alert-light border mt-3">Bạn đã dùng hết 3 lượt trả giá. Bạn vẫn có thể chấp nhận hoặc từ chối đề xuất hiện tại.</div>
+        }
+        else
+        {
+            <div class="alert alert-light border mt-3">Không còn khoảng giá hợp lệ để đề xuất lại. Bạn có thể chấp nhận hoặc từ chối mức giá hiện tại.</div>
         }
     }
     else if (Model.Status is OfferStatus.PendingSeller or OfferStatus.PendingBuyer)

@@ -29,9 +29,9 @@
             <div class="d-flex align-items-center gap-2 header-actions">
                 @if (User.Identity?.IsAuthenticated == true)
                 {
-                    <a class="icon-link" asp-area="" asp-controller="Messages" asp-action="Index" aria-label="Tin nhắn" title="Tin nhắn">✉</a>
+                    <a class="icon-link unread-link" asp-area="" asp-controller="Messages" asp-action="Index" aria-label="Tin nhắn" data-unread-label="Tin nhắn" title="Tin nhắn">✉<span class="unread-count" data-unread-badge="messages" aria-hidden="true" hidden></span></a>
                     <a class="icon-link" asp-area="" asp-controller="Cart" asp-action="Index" aria-label="Giỏ hàng" title="Giỏ hàng">🛍</a>
-                    <a class="icon-link" asp-area="" asp-controller="Profile" asp-action="Notifications" aria-label="Thông báo">♡</a>
+                    <a class="icon-link unread-link" asp-area="" asp-controller="Profile" asp-action="Notifications" aria-label="Thông báo" data-unread-label="Thông báo" title="Thông báo">♡<span class="unread-count" data-unread-badge="notifications" aria-hidden="true" hidden></span></a>
                     <a class="btn btn-dark btn-sm rounded-pill px-3 d-none d-sm-inline-block" asp-area="" asp-controller="Profile" asp-action="Index">Tài khoản</a>
                 }
                 else
@@ -57,10 +57,12 @@
         <a asp-area="" asp-controller="Home" asp-action="Index"><span>⌂</span><small>Trang chủ</small></a>
         <a asp-area="" asp-controller="Shop" asp-action="Index"><span>⌕</span><small>Tìm kiếm</small></a>
         <a class="sell-tab" asp-area="" asp-controller="Listing" asp-action="Create"><span>+</span><small>Đăng bán</small></a>
-        <a asp-area="" asp-controller="Profile" asp-action="Notifications"><span>♧</span><small>Thông báo</small></a>
+        <a class="unread-link" asp-area="" asp-controller="Profile" asp-action="Notifications" aria-label="Thông báo" data-unread-label="Thông báo"><span class="nav-icon">♧<span class="unread-count" data-unread-badge="notifications" aria-hidden="true" hidden></span></span><small>Thông báo</small></a>
         <a asp-area="" asp-controller="Profile" asp-action="Index"><span>♙</span><small>Tôi</small></a>
     </nav>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @if (User.Identity?.IsAuthenticated == true)
+    { <script src="~/lib/signalr/signalr.min.js" asp-append-version="true"></script> }
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

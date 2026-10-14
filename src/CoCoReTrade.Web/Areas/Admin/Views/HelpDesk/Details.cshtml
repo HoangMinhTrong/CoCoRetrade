@@ -1,6 +1,37 @@
 @model SupportTicketDetails
-@{ ViewData["Title"] = "Hỗ trợ: " + Model.Ticket.Subject; var myId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value; }
+@{
+    ViewData["Title"] = "Hỗ trợ: " + Model.Ticket.Subject;
+    var myId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+}
 <div class="mt-4 mb-3"><a asp-action="Index">← Hàng đợi hỗ trợ</a></div>
-<div class="eyebrow">@Model.Ticket.UserName · @(Model.Ticket.Status == SupportTicketStatus.Open ? "Đang xử lý" : "Đã đóng")</div><h1 class="page-title mt-1">@Model.Ticket.Subject</h1>
-<div class="panel message-thread mb-3">@foreach (var message in Model.Messages) { <div class="message-row @(message.SenderId == myId ? "mine" : "theirs")"><div class="message-bubble"><p class="mb-1" style="white-space:pre-wrap">@message.Body</p><small>@message.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</small></div></div> }</div>
-@if (Model.Ticket.Status == SupportTicketStatus.Open) { <form asp-action="Reply" method="post" class="panel mb-3"><input type="hidden" name="id" value="@Model.Ticket.Id" /><label for="body" class="form-label">Trả lời khách hàng</label><textarea id="body" name="body" class="form-control" rows="3" minlength="3" maxlength="2000" required></textarea><button type="submit" class="btn btn-wine mt-3">Gửi trả lời</button></form><form asp-action="Close" method="post" class="mb-5"><input type="hidden" name="id" value="@Model.Ticket.Id" /><button type="submit" class="btn btn-outline-wine">Đóng yêu cầu</button></form> }
+<div class="eyebrow">@Model.Ticket.UserName · <span id="support-ticket-status">@(Model.Ticket.Status == SupportTicketStatus.Open ? "Đang xử lý" : "Đã đóng")</span></div>
+<h1 class="page-title mt-1">@Model.Ticket.Subject</h1>
+<p id="support-connection-status" class="small text-muted" role="status" aria-live="polite">Phản hồi được lưu trên CoCo.</p>
+<div id="support-thread" class="panel message-thread mb-3" role="log" aria-live="polite"
+     aria-label="Nội dung hỗ trợ" data-ticket-id="@Model.Ticket.Id" data-current-user-id="@myId"
+     data-api-url="/api/v1/admin/support/@Model.Ticket.Id">
+    @foreach (var message in Model.Messages)
+    {
+        <div class="message-row @(message.SenderId == myId ? "mine" : "theirs")" data-message-id="@message.Id">
+            <div class="message-bubble"><p class="mb-1" style="white-space:pre-wrap">@message.Body</p><small>@message.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</small></div>
+        </div>
+    }
+</div>
+@if (Model.Ticket.Status == SupportTicketStatus.Open)
+{
+    <form id="support-reply-form" asp-action="Reply" method="post" class="panel mb-3">
+        <input type="hidden" name="id" value="@Model.Ticket.Id" />
+        <label for="body" class="form-label">Trả lời khách hàng</label>
+        <textarea id="body" name="body" class="form-control" rows="3" minlength="3" maxlength="2000" required></textarea>
+        <div id="support-error" class="text-danger small mt-2" role="alert" hidden></div>
+        <button type="submit" class="btn btn-wine mt-3">Gửi trả lời</button>
+    </form>
+    <form id="support-close-form" asp-action="Close" method="post" class="mb-5">
+        <input type="hidden" name="id" value="@Model.Ticket.Id" />
+        <button type="submit" class="btn btn-outline-wine">Đóng yêu cầu</button>
+    </form>
+}
+
+@section Scripts {
+    <script src="~/js/support-ticket.js" asp-append-version="true"></script>
+}

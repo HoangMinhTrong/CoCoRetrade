@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CoCoReTrade.Web.Controllers;
 
 public sealed class AccountController(IAccountService accounts, IAccountMessageSender messages,
-    IAccountOtpService otps, IConfiguration configuration, IWebHostEnvironment environment) : Controller
+    IAccountOtpService otps, IWebHostEnvironment environment) : Controller
 {
     [HttpGet] public IActionResult Register() => View(new RegisterForm());
     [HttpPost]
@@ -74,6 +74,11 @@ public sealed class AccountController(IAccountService accounts, IAccountMessageS
                 return View(form);
             }
         }
+        else
+        {
+            ViewBag.UserId = Guid.NewGuid().ToString("N");
+            ViewBag.Flow = "activation";
+        }
         return View("CheckEmail");
     }
     [HttpPost]
@@ -111,6 +116,11 @@ public sealed class AccountController(IAccountService accounts, IAccountMessageS
             ViewBag.Flow = "reset";
             ViewBag.DevCode = environment.IsDevelopment() ? issued.Code : null;
         }
+        else
+        {
+            ViewBag.UserId = Guid.NewGuid().ToString("N");
+            ViewBag.Flow = "reset";
+        }
         return View("CheckEmail");
     }
     [HttpGet]
@@ -136,7 +146,11 @@ public sealed class AccountController(IAccountService accounts, IAccountMessageS
             if (environment.IsDevelopment()) TempData["DevCode"] = issued.Code;
         }
         catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException or System.Net.Mail.SmtpException)
-        { TempData["Error"] = ex is System.Net.Mail.SmtpException ? "Không gửi được email lúc này. Vui lòng thử lại sau." : ex.Message; }
+        {
+            if (ex is KeyNotFoundException) TempData["Message"] = "Nếu tài khoản hợp lệ, mã mới đã được gửi.";
+            else TempData["Error"] = ex is System.Net.Mail.SmtpException ?
+                "Không gửi được email lúc này. Vui lòng thử lại sau." : ex.Message;
+        }
         return RedirectToAction(purpose == "activation" ? nameof(ConfirmOtp) : nameof(VerifyResetOtp), new { userId });
     }
     [HttpGet] public IActionResult ResetPassword(string userId, string token) => View(new ResetPasswordForm { UserId = userId, Token = token });
@@ -160,14 +174,4 @@ public sealed class AccountController(IAccountService accounts, IAccountMessageS
         return RedirectToAction("Index", "Home");
     }
     public IActionResult AccessDenied() => View();
-    private string Link(string action, object values)
-    {
-        var baseUrl = configuration["PublicBaseUrl"];
-        if (string.IsNullOrWhiteSpace(baseUrl))
-        {
-            if (!environment.IsDevelopment()) throw new InvalidOperationException("PublicBaseUrl must be configured in production.");
-            baseUrl = $"{Request.Scheme}://{Request.Host}";
-        }
-        return baseUrl.TrimEnd('/') + Url.Action(action, "Account", values);
-    }
 }

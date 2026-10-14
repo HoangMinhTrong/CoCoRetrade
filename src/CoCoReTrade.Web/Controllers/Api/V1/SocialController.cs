@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CoCoReTrade.Web.Controllers.Api.V1;
 
 [ApiController, Authorize, Route("api/v1/social")]
-public sealed class SocialController(ISocialService social) : ControllerBase
+public sealed class SocialApiController(ISocialService social) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
     [HttpGet("favorites")]
