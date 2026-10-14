@@ -1,0 +1,21 @@
+@model ListingForm
+@{ ViewData["Title"] = "Đăng bán / Ký gửi"; }
+<div class="row justify-content-center"><div class="col-lg-9">
+    <div class="eyebrow mt-4">Tủ đồ tuần hoàn</div><h1 class="page-title mt-1">Ký gửi món đồ của bạn</h1>
+    <p class="subtitle mb-4">Tải ít nhất 3 ảnh thật. Sau khi gửi, CoCo sẽ kiểm tra món đồ thực tế trước khi duyệt bán.</p>
+    <form asp-action="Create" method="post" enctype="multipart/form-data" class="panel mb-5">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+        <div class="row g-3">
+            <div class="col-12"><label asp-for="Images" class="form-label"></label><input asp-for="Images" class="form-control" type="file" accept="image/jpeg,image/png,image/webp" multiple required data-preview="photoPreview" /><span asp-validation-for="Images" class="text-danger small"></span><div class="form-text">Ảnh mặt trước, tem thương hiệu và cận cảnh tình trạng. JPG, PNG hoặc WebP; tối đa 5 MB mỗi ảnh, tối đa 10 ảnh.</div><div id="photoPreview" class="photo-preview"></div></div>
+            <div class="col-md-8"><label asp-for="Name" class="form-label"></label><input asp-for="Name" class="form-control" placeholder="Ví dụ: Áo sơ mi linen Zara" /><span asp-validation-for="Name" class="text-danger small"></span></div>
+            <div class="col-md-4"><label asp-for="Brand" class="form-label"></label><input asp-for="Brand" class="form-control" placeholder="Zara" /><span asp-validation-for="Brand" class="text-danger small"></span></div>
+            <div class="col-md-6"><label asp-for="Category" class="form-label"></label><select asp-for="Category" class="form-select"><option value="">Chọn danh mục</option><option>Áo</option><option>Quần</option><option>Đầm/Váy</option><option>Túi</option><option>Phụ kiện</option></select><span asp-validation-for="Category" class="text-danger small"></span></div>
+            <div class="col-md-6"><label asp-for="Size" class="form-label"></label><select asp-for="Size" class="form-select"><option value="">Chọn kích cỡ</option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>Free size</option></select><span asp-validation-for="Size" class="text-danger small"></span></div>
+            <div class="col-md-4"><label asp-for="ConditionPercent" class="form-label"></label><select asp-for="ConditionPercent" class="form-select"><option value="99">Như mới 99%</option><option value="95">Rất tốt 95%</option><option value="90">Tốt 90%</option><option value="85">Khá 85%</option><option value="80">Đã qua sử dụng 80%</option></select><span asp-validation-for="ConditionPercent" class="text-danger small"></span></div>
+            <div class="col-md-4"><label asp-for="OriginalPrice" class="form-label"></label><div class="input-group"><input asp-for="OriginalPrice" class="form-control" type="number" min="1" step="1" /><span class="input-group-text">đ</span></div><span asp-validation-for="OriginalPrice" class="text-danger small"></span></div>
+            <div class="col-md-4"><label asp-for="AskingPrice" class="form-label"></label><div class="input-group"><input asp-for="AskingPrice" class="form-control" type="number" min="1" step="1" /><span class="input-group-text">đ</span></div><span asp-validation-for="AskingPrice" class="text-danger small"></span></div>
+            <div class="col-12"><div class="form-check"><input asp-for="AllowOffers" class="form-check-input" /><label asp-for="AllowOffers" class="form-check-label">Cho phép khách trả giá sau khi được duyệt</label></div></div>
+            <div class="col-12"><button type="submit" class="btn btn-wine w-100 mt-3">Gửi kiểm định & nhận mã ký gửi →</button></div>
+        </div>
+    </form>
+</div></div>

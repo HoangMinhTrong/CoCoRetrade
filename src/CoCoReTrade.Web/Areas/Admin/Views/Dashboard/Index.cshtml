@@ -1,0 +1,24 @@
+@model AdminProductDashboard
+@{ ViewData["Title"] = "Bảng điều khiển CoCo"; }
+<div class="eyebrow mt-4">CoCo Backoffice</div><h1 class="page-title mt-1">Bảng điều khiển</h1>
+<p class="subtitle">Theo dõi ký gửi, kiểm định và vận hành đơn hàng.</p>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-4"><div class="panel h-100"><div class="eyebrow">Chờ duyệt</div><div class="display-serif fs-2">@Model.Pending</div></div></div>
+    <div class="col-6 col-lg-4"><div class="panel h-100"><div class="eyebrow">Đã kiểm định</div><div class="display-serif fs-2">@Model.Inspected</div></div></div>
+    <div class="col-6 col-lg-4"><div class="panel h-100"><div class="eyebrow">Đang bán</div><div class="display-serif fs-2">@Model.Active</div></div></div>
+    <div class="col-6 col-lg-4"><div class="panel h-100"><div class="eyebrow">Từ chối</div><div class="display-serif fs-2">@Model.Rejected</div></div></div>
+    <div class="col-6 col-lg-4"><div class="panel h-100"><div class="eyebrow">Đã giữ hàng</div><div class="display-serif fs-2">@Model.Reserved</div></div></div>
+    <div class="col-6 col-lg-4"><div class="panel h-100"><div class="eyebrow">Đã bán</div><div class="display-serif fs-2">@Model.Sold</div></div></div>
+</div>
+<div class="d-flex flex-wrap gap-2 mb-5">
+    <a class="btn btn-wine" asp-area="Admin" asp-controller="Inspection" asp-action="Index">Ký gửi chờ duyệt</a>
+    @if (User.HasClaim(StaffPermissions.ClaimType, StaffPermissions.ManageProducts))
+    {
+        <a class="btn btn-outline-wine" asp-area="Admin" asp-controller="Products" asp-action="Index">Sản phẩm</a>
+        <a class="btn btn-outline-wine" asp-area="Admin" asp-controller="Orders" asp-action="Index">Đơn hàng</a>
+        <a class="btn btn-outline-wine" asp-area="Admin" asp-controller="Users" asp-action="Index">Người dùng</a>
+        <a class="btn btn-outline-wine" asp-area="Admin" asp-controller="HelpDesk" asp-action="Index">Hỗ trợ khách hàng</a>
+        <a class="btn btn-outline-wine" asp-area="Admin" asp-controller="Wallets" asp-action="Index">Ví</a>
+        <a class="btn btn-outline-wine" asp-area="Admin" asp-controller="Audit" asp-action="Index">Nhật ký</a>
+    }
+</div>

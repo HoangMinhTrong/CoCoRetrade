@@ -1,0 +1,30 @@
+@model OrderDto
+@inject ShippingPolicy Shipping
+@{ ViewData["Title"] = "Đơn " + Model.ProductSku; var me = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+   var pickupAtStore = Model.PickupAtUtc.HasValue ? new DateTimeOffset(Model.PickupAtUtc.Value, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(Shipping.StoreUtcOffsetHours)).ToString("dd/MM/yyyy HH:mm") : null; }
+<div class="mt-4"><a asp-action="Index">← Đơn hàng của tôi</a></div>
+<div class="row g-4 mt-1 mb-5"><div class="col-lg-7"><div class="panel">
+    <div class="eyebrow">@Model.ProductSku</div><h1 class="page-title mt-2">@Model.ProductName</h1>
+    <p><span class="status-pill">@Model.Status</span> <span class="status-pill">Thanh toán: @Model.PaymentStatus</span></p>
+    <div class="spec-row"><span>Kích cỡ</span><strong>@Model.ProductSize</strong></div>
+    @if (me == Model.SellerId && me != Model.BuyerId && !User.IsInRole("Admin"))
+    { <div class="alert alert-light border">CoCo phụ trách giao nhận. Thông tin liên hệ của người mua được giữ riêng tư.</div> }
+    else
+    {
+        <div class="spec-row"><span>Người nhận</span><strong>@Model.RecipientName · @Model.RecipientPhone</strong></div>
+        @if (Model.Fulfillment == FulfillmentType.Pickup) { <div class="spec-row"><span>Giờ lấy tại CoCo</span><strong>@pickupAtStore</strong></div><div class="spec-row"><span>Địa chỉ CoCo khi đặt</span><strong>@Model.PickupAddress</strong></div> }
+        else { <div class="spec-row"><span>Giao tới</span><strong>@Model.StreetAddress, @Model.Ward, @Model.Province</strong></div>
+            @if (Model.PreferredDeliveryWindow.HasValue) { <div class="spec-row"><span>Khung giờ thuận tiện</span><strong>@Model.PreferredDeliveryWindow</strong></div> }
+            @if (!string.IsNullOrWhiteSpace(Model.DeliveryNote)) { <div class="spec-row"><span>Ghi chú giao hàng</span><strong>@Model.DeliveryNote</strong></div> }
+        }
+    }
+    <div class="spec-row"><span>Tiền hàng</span><strong>@Model.MerchandisePrice.ToString("N0")đ</strong></div>
+    <div class="spec-row"><span>Phí giao</span><strong>@Model.ShippingFee.ToString("N0")đ</strong></div>
+    <div class="spec-row fs-5"><span>Tổng thanh toán</span><strong>@Model.TotalAmount.ToString("N0")đ</strong></div>
+    <p class="small text-muted mt-3 mb-0">Đơn mới đang chờ CoCo xử lý. Trạng thái thanh toán được xác nhận riêng sau khi CoCo nhận tiền.</p>
+</div></div><div class="col-lg-5"><div class="panel"><h2 class="display-serif fs-4">Theo dõi</h2>
+    <p>Ngày đặt: @Model.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+    @if (me == Model.BuyerId && Model.Status == OrderStatus.PendingProcessing && Model.PaymentStatus == PaymentStatus.Unpaid)
+    { <form asp-action="Cancel" asp-route-id="@Model.Id" method="post"><button class="btn btn-outline-danger w-100">Hủy đơn trước khi xử lý</button></form> }
+    @if (User.IsInRole("Admin")) { <a class="btn btn-outline-wine w-100" asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id">Mở quản lý đơn</a> }
+</div></div></div>

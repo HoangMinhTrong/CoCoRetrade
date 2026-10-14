@@ -1,0 +1,12 @@
+@model ConversationDetails
+@{ ViewData["Title"] = "Tin nhắn về " + Model.Summary.ProductName; var myId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value; }
+<div class="mt-4 mb-3"><a asp-action="Index">← Tất cả tin nhắn</a></div>
+<div class="eyebrow">@Model.Summary.ProductSku · @Model.Summary.OtherUserName</div><h1 class="page-title mt-1">@Model.Summary.ProductName</h1>
+<div class="panel mb-3 message-thread" aria-label="Nội dung trò chuyện">
+    @if (Model.Messages.Count == 0) { <p class="subtitle mb-0">Hãy gửi lời nhắn đầu tiên để bắt đầu trò chuyện.</p> }
+    @foreach (var message in Model.Messages)
+    {
+        <div class="message-row @(message.SenderId == myId ? "mine" : "theirs")"><div class="message-bubble"><p class="mb-1" style="white-space:pre-wrap">@message.Body</p><small>@message.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</small></div></div>
+    }
+</div>
+<form asp-action="Send" method="post" class="panel mb-5"><input type="hidden" name="id" value="@Model.Summary.Id" /><label for="body" class="form-label">Tin nhắn</label><textarea id="body" name="body" class="form-control" rows="3" maxlength="1000" required></textarea><button type="submit" class="btn btn-wine mt-3">Gửi tin nhắn</button></form>

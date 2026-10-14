@@ -1,0 +1,6 @@
+@model SupportTicketDetails
+@{ ViewData["Title"] = Model.Ticket.Subject; var myId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value; }
+<div class="mt-4 mb-3"><a asp-action="Index">← Các yêu cầu hỗ trợ</a></div>
+<div class="eyebrow">@(Model.Ticket.Status == SupportTicketStatus.Open ? "Đang xử lý" : "Đã đóng")</div><h1 class="page-title mt-1">@Model.Ticket.Subject</h1>
+<div class="panel message-thread mb-3">@foreach (var message in Model.Messages) { <div class="message-row @(message.SenderId == myId ? "mine" : "theirs")"><div class="message-bubble"><p class="mb-1" style="white-space:pre-wrap">@message.Body</p><small>@message.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</small></div></div> }</div>
+@if (Model.Ticket.Status == SupportTicketStatus.Open) { <form asp-action="Reply" method="post" class="panel mb-5"><input type="hidden" name="id" value="@Model.Ticket.Id" /><label for="body" class="form-label">Trả lời CoCo</label><textarea id="body" name="body" class="form-control" rows="3" minlength="3" maxlength="2000" required></textarea><button type="submit" class="btn btn-wine mt-3">Gửi trả lời</button></form> }

@@ -1,0 +1,5 @@
+@model IReadOnlyList<OrderDto>
+@{ ViewData["Title"] = "Đơn hàng của tôi"; var me = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value; }
+<div class="eyebrow mt-4">Giao dịch</div><h1 class="page-title">Đơn hàng của tôi</h1>
+@if (Model.Count == 0) { <div class="empty-state">Chưa có đơn hàng. <a asp-controller="Shop" asp-action="Index">Khám phá sản phẩm →</a></div> }
+else { <div class="row g-3 mb-5">@foreach (var order in Model) { <div class="col-md-6"><a class="panel offer-card d-block h-100" asp-action="Details" asp-route-id="@order.Id"><div class="d-flex justify-content-between"><span class="eyebrow">@order.ProductSku</span><span class="status-pill">@order.Status</span></div><h2 class="display-serif fs-4 mt-2">@order.ProductName</h2><p class="small text-muted">@(order.BuyerId == me ? "Bạn mua" : "Bạn bán") · @order.Fulfillment · @order.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p><strong class="product-price">@order.TotalAmount.ToString("N0")đ</strong></a></div> }</div> }

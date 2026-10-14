@@ -1,0 +1,81 @@
+@model CheckoutForm
+@{
+    var quote = (CheckoutQuote)ViewBag.Quote;
+    var shipping = (ShippingPolicy)ViewBag.Shipping;
+    var product = ViewBag.Product as ProductDetails;
+    var savedAddresses = (IReadOnlyList<AddressDto>)ViewBag.Addresses;
+    ViewData["Title"] = "Xác nhận đặt hàng";
+}
+<div class="mt-4 mb-3"><a asp-controller="Shop" asp-action="Details" asp-route-id="@Model.ProductId">← Chi tiết sản phẩm</a></div>
+<div class="eyebrow">@(Model.OfferId.HasValue ? "Giá đã thỏa thuận" : "Mua ngay")</div>
+<h1 class="page-title mt-1">Xác nhận đặt hàng</h1>
+<p class="subtitle">Sản phẩm chỉ được giữ sau khi đơn được tạo thành công. Đơn mới ở trạng thái chờ xử lý và chưa được đánh dấu đã thanh toán.</p>
+<div class="row g-4 mb-5"><div class="col-lg-7">
+    <form asp-controller="Checkout" asp-action="Index" method="post" class="panel" id="checkoutForm">
+        <input asp-for="ProductId" type="hidden" /><input asp-for="OfferId" type="hidden" /><input asp-for="IdempotencyKey" type="hidden" />
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+        <h2 class="display-serif fs-4 mb-3">Thông tin nhận hàng</h2>
+        <div class="row g-3"><div class="col-md-6"><label asp-for="RecipientName" class="form-label"></label><input asp-for="RecipientName" class="form-control" autocomplete="name" /><span asp-validation-for="RecipientName" class="text-danger small"></span></div>
+        <div class="col-md-6"><label asp-for="RecipientPhone" class="form-label"></label><input asp-for="RecipientPhone" class="form-control" inputmode="tel" autocomplete="tel" /><span asp-validation-for="RecipientPhone" class="text-danger small"></span></div></div>
+        <div class="mt-4"><label asp-for="Fulfillment" class="form-label"></label><select asp-for="Fulfillment" class="form-select">
+            <option value="Pickup" disabled="@(!shipping.CanPickup ? "disabled" : null)">Tới CoCo lấy · miễn phí</option>
+            <option value="Shipping">Giao tận nơi</option>
+        </select></div>
+        <div id="pickupFields" class="mt-3"><div class="alert alert-light border">Địa chỉ CoCo: <strong>@(shipping.CanPickup ? shipping.StoreAddress : "Chưa được cấu hình")</strong><br />Giờ nhận: @shipping.OpeningHour:00–@shipping.ClosingHour:00, từ ngày mai đến 3 ngày tới.
+            @if (ViewBag.StoreMapUrl is string mapUrl) { <br /><a href="@mapUrl" target="_blank" rel="noopener noreferrer">Xem đường đi trên bản đồ →</a> }
+        </div>
+            <label asp-for="PickupLocal" class="form-label"></label><input asp-for="PickupLocal" type="datetime-local" class="form-control" /><span asp-validation-for="PickupLocal" class="text-danger small"></span></div>
+        <div id="shippingFields" class="mt-3" hidden>
+            @if (savedAddresses.Count > 0)
+            { <label for="savedAddress" class="form-label">Chọn nhanh địa chỉ đã lưu</label><select id="savedAddress" class="form-select mb-3"><option value="">Nhập địa chỉ khác</option>@foreach (var a in savedAddresses) { <option value="@a.Id" data-recipient="@a.RecipientName" data-phone="@a.RecipientPhone" data-province="@a.Province" data-ward="@a.Ward" data-street="@a.StreetAddress">@a.RecipientName · @a.StreetAddress, @a.Ward, @a.Province</option> }</select> }
+            <div class="row g-3"><div class="col-md-6"><label asp-for="Province" class="form-label"></label><input asp-for="Province" class="form-control" autocomplete="address-level1" placeholder="Tỉnh / thành phố hiện hành" /><span asp-validation-for="Province" class="text-danger small"></span></div>
+            <div class="col-md-6"><label asp-for="Ward" class="form-label"></label><input asp-for="Ward" class="form-control" autocomplete="address-level3" placeholder="Phường / xã hiện hành" /><span asp-validation-for="Ward" class="text-danger small"></span></div>
+            <div class="col-12"><label asp-for="StreetAddress" class="form-label"></label><input asp-for="StreetAddress" class="form-control" autocomplete="street-address" placeholder="Số nhà, đường, khu vực" /><span asp-validation-for="StreetAddress" class="text-danger small"></span></div>
+            <div class="col-sm-6"><label asp-for="PreferredDeliveryWindow" class="form-label"></label><select asp-for="PreferredDeliveryWindow" class="form-select"><option value="">Không yêu cầu</option><option value="Morning">Buổi sáng</option><option value="Afternoon">Buổi chiều</option><option value="BusinessHours">Giờ hành chính</option></select></div>
+            <div class="col-12"><label asp-for="DeliveryNote" class="form-label"></label><textarea asp-for="DeliveryNote" rows="2" maxlength="500" class="form-control" placeholder="Hướng dẫn cho người giao hàng (nếu có)"></textarea></div></div>
+            <p class="form-text mt-2">Phí nội thành theo danh sách tỉnh/thành và phường/xã CoCo cấu hình: 20.000đ. Khu vực khác: 35.000đ.</p>
+        </div>
+        <button class="btn btn-wine w-100 mt-4" type="submit">Xác nhận đặt hàng</button>
+    </form>
+</div><div class="col-lg-5"><div class="panel position-sticky" style="top:110px">
+    <div class="d-flex align-items-center gap-3 mb-3">
+        @if (product?.ImageIds.Count > 0) { <img src="/images/@product.ImageIds[0]" alt="@quote.ProductName" style="width:76px;height:94px;object-fit:cover;border-radius:10px" /> }
+        <div><div class="eyebrow">@quote.ProductSku</div><h2 class="display-serif fs-4 mb-1">@quote.ProductName</h2><small class="text-muted">Size @quote.ProductSize · @(product?.VerifiedCondition ?? product?.DeclaredCondition)% độ mới</small></div>
+    </div>
+    @if (quote.OfferExpiresAtUtc.HasValue) { <div class="alert alert-success small">Giá riêng của bạn có hiệu lực đến @quote.OfferExpiresAtUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm").</div> }
+    <div class="spec-row"><span>Tiền hàng</span><strong>@quote.MerchandisePrice.ToString("N0")đ</strong></div>
+    <div class="spec-row" aria-live="polite"><span>Phí vận chuyển</span><strong id="shippingFee">@(quote.ShippingFeePending ? "Chọn tỉnh/thành và phường/xã" : quote.ShippingFee.ToString("N0") + "đ")</strong></div>
+    <div class="spec-row fs-5" aria-live="polite"><span>Tổng thanh toán</span><strong id="totalAmount">@(quote.ShippingFeePending ? "—" : quote.TotalAmount.ToString("N0") + "đ")</strong></div>
+    <p id="quoteError" class="small text-danger mt-2" role="alert"></p>
+</div></div></div>
+@section Scripts { <script>
+const preview = @(((bool?)ViewBag.PreviewMode == true).ToString().ToLowerInvariant());
+const productId = '@Model.ProductId', offerId = '@Model.OfferId', merchandise = @quote.MerchandisePrice;
+const type = document.getElementById('Fulfillment'), province = document.getElementById('Province'), ward = document.getElementById('Ward');
+const pickup = document.getElementById('PickupLocal'), street = document.getElementById('StreetAddress');
+const savedAddress = document.getElementById('savedAddress');
+if(savedAddress) savedAddress.addEventListener('change', () => {
+  const selected = savedAddress.selectedOptions[0]; if(!selected.value) return;
+  for(const [field,key] of [['RecipientName','recipient'],['RecipientPhone','phone'],['Province','province'],['Ward','ward'],['StreetAddress','street']])
+    document.getElementById(field).value = selected.dataset[key] || '';
+  updateQuote();
+});
+const money = n => new Intl.NumberFormat('vi-VN').format(n) + 'đ';
+async function updateQuote(){
+  const delivery = type.value === 'Shipping'; document.getElementById('pickupFields').hidden = delivery;
+  document.getElementById('shippingFields').hidden = !delivery;
+  pickup.required = !delivery; for(const el of [province,ward,street]) el.required = delivery;
+  const feeEl = document.getElementById('shippingFee'), totalEl = document.getElementById('totalAmount');
+  if(delivery && (!province.value.trim() || !ward.value.trim())){feeEl.textContent='Chọn tỉnh/thành và phường/xã';totalEl.textContent='—';return;}
+  if(preview){const fee=delivery?35000:0;feeEl.textContent=money(fee);totalEl.textContent=money(merchandise+fee);return;}
+  const query=new URLSearchParams({productId,fulfillment:type.value,province:province.value,ward:ward.value});
+  if(offerId) query.set('offerId',offerId);
+  try{const response=await fetch('/api/v1/orders/quote?'+query.toString(),{credentials:'same-origin'});
+    if(!response.ok) throw new Error('Không tính được phí vận chuyển.');
+    const q=await response.json();feeEl.textContent=money(q.shippingFee);totalEl.textContent=money(q.totalAmount);
+    document.getElementById('quoteError').textContent='';
+  }catch(error){feeEl.textContent='—';totalEl.textContent='—';document.getElementById('quoteError').textContent=error.message;}
+}
+for(const el of [type,province,ward]) el.addEventListener(el===type?'change':'input',updateQuote);
+updateQuote();
+</script> }

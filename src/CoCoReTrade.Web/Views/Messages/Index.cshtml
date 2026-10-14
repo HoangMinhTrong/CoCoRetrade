@@ -1,0 +1,15 @@
+@model IReadOnlyList<ConversationSummary>
+@{ ViewData["Title"] = "Tin nhắn"; }
+<div class="eyebrow mt-4">Trò chuyện trên CoCo</div><h1 class="page-title mt-1">Tin nhắn</h1>
+<p class="subtitle">Trao đổi về sản phẩm ngay trong ứng dụng. Tin nhắn được lưu và chỉ hai bên giao dịch xem được.</p>
+@if (Model.Count == 0)
+{
+    <div class="empty-state mt-4"><div class="empty-icon">✉</div><h2 class="display-serif">Chưa có cuộc trò chuyện</h2><p>Mở trang sản phẩm đang bán để nhắn tin cho người bán.</p><a class="btn btn-wine" asp-controller="Shop" asp-action="Index">Khám phá sản phẩm</a></div>
+}
+else
+{
+    <div class="row g-2 mb-5">@foreach (var conversation in Model)
+    {
+        <div class="col-12"><a class="panel d-flex justify-content-between align-items-center gap-3 text-decoration-none" asp-action="Details" asp-route-id="@conversation.Id"><div><div class="eyebrow">@conversation.ProductSku · @conversation.OtherUserName</div><h2 class="display-serif fs-5 mb-1">@conversation.ProductName</h2><small class="text-muted">@conversation.LastMessageAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small></div>@if (conversation.UnreadCount > 0) { <span class="badge rounded-pill text-bg-danger">@conversation.UnreadCount mới</span> }</a></div>
+    }</div>
+}

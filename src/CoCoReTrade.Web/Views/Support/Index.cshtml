@@ -1,0 +1,8 @@
+@model IReadOnlyList<SupportTicketRow>
+@{ ViewData["Title"] = "Trợ giúp CoCo"; }
+<div class="eyebrow mt-4">Chăm sóc khách hàng</div><h1 class="page-title mt-1">Trợ giúp CoCo</h1>
+<p class="subtitle">Gửi câu hỏi về ký gửi, đơn hàng, trả giá hoặc ví. Nhân viên CoCo sẽ phản hồi trong ứng dụng.</p>
+<a class="btn btn-wine mb-4" asp-action="Create">Gửi yêu cầu hỗ trợ</a>
+<h2 class="display-serif fs-4">Yêu cầu của bạn</h2>
+@if (Model.Count == 0) { <p class="subtitle">Bạn chưa gửi yêu cầu nào.</p> }
+else { <div class="row g-2 mb-5">@foreach (var ticket in Model) { <div class="col-12"><a class="panel d-flex justify-content-between gap-3 text-decoration-none" asp-action="Details" asp-route-id="@ticket.Id"><span><strong>@ticket.Subject</strong><br /><small>@ticket.LastActivityAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small></span><span>@(ticket.Status == SupportTicketStatus.Open ? "Đang xử lý" : "Đã đóng")</span></a></div> }</div> }

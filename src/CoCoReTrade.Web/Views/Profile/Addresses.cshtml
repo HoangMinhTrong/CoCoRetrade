@@ -1,0 +1,6 @@
+@model IReadOnlyList<AddressDto>
+@{ ViewData["Title"] = "Sổ địa chỉ"; }
+<div class="d-flex justify-content-between align-items-end gap-2 mt-4 mb-3"><div><div class="eyebrow">Nhận hàng</div><h1 class="page-title mt-1">Sổ địa chỉ</h1></div><a class="btn btn-wine" asp-action="Address">+ Thêm địa chỉ</a></div>
+<p class="subtitle">Địa chỉ đã lưu có thể được chọn nhanh khi đặt hàng.</p>
+@if (Model.Count == 0) { <div class="empty-state">Bạn chưa lưu địa chỉ nào.</div> }
+else { <div class="row g-3 mb-5">@foreach (var item in Model) { <div class="col-md-6"><div class="panel h-100"><h2 class="fs-5">@item.RecipientName · @item.RecipientPhone</h2><p>@item.StreetAddress, @item.Ward, @item.Province</p><div class="d-flex gap-2"><a class="btn btn-outline-wine btn-sm" asp-action="Address" asp-route-id="@item.Id">Sửa</a><form asp-action="DeleteAddress" method="post"><input type="hidden" name="id" value="@item.Id" /><button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Xóa địa chỉ này?')">Xóa</button></form></div></div></div> }</div> }

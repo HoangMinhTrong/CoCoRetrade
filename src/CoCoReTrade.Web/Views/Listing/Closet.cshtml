@@ -1,0 +1,5 @@
+@model IReadOnlyList<ProductCard>
+@{ ViewData["Title"] = "Tủ đồ của tôi"; }
+<div class="d-flex justify-content-between align-items-end gap-3 mt-4 mb-4"><div><div class="eyebrow">Không gian ký gửi</div><h1 class="page-title mt-1 mb-0">Tủ đồ của tôi</h1></div><a class="btn btn-wine" asp-action="Create">+ Đăng món mới</a></div>
+<div class="panel mb-4"><div class="d-flex flex-wrap gap-3"><span><strong>@Model.Count(x => x.Status == ProductStatus.PendingApproval)</strong> chờ duyệt</span><span><strong>@Model.Count(x => x.Status == ProductStatus.Active)</strong> đang bán</span><span><strong>@Model.Count(x => x.Status == ProductStatus.Rejected)</strong> từ chối</span></div></div>
+<partial name="_ProductGrid" model="Model" />

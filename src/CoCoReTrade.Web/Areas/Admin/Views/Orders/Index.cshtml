@@ -1,0 +1,15 @@
+@model IReadOnlyList<OrderDto>
+@{ ViewData["Title"] = "Quản lý đơn hàng"; }
+<div class="eyebrow mt-4">CoCo Admin</div><h1 class="page-title">Quản lý đơn hàng</h1>
+<p class="subtitle">Đơn mới chờ xử lý, đơn đang giao, đã hoàn tất và đã hủy.</p>
+<div class="row g-3 mb-5">
+@foreach (var order in Model)
+{
+    <div class="col-lg-6"><a class="panel offer-card d-block h-100" asp-action="Details" asp-route-id="@order.Id">
+        <div class="d-flex justify-content-between"><span class="eyebrow">@order.ProductSku</span><span class="status-pill">@order.Status</span></div>
+        <h2 class="display-serif fs-4 mt-2">@order.ProductName</h2>
+        <div class="text-muted small">@order.Fulfillment · @order.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+        <strong class="product-price">@order.TotalAmount.ToString("N0")đ</strong>
+    </a></div>
+}
+</div>

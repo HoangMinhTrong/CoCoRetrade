@@ -1,0 +1,15 @@
+@model MakeOfferForm
+@{ var p = (ProductDetails)ViewBag.Product; decimal minimum = (decimal)ViewBag.MinimumPrice; ViewData["Title"] = "Trả giá " + p.Name; }
+<div class="mt-4 mb-3"><a asp-controller="Shop" asp-action="Details" asp-route-id="@p.Id">← @p.Name</a></div>
+<div class="row justify-content-center"><div class="col-lg-7"><div class="panel mb-5">
+    <div class="eyebrow">Make an offer</div><h1 class="page-title mt-1">Đề xuất giá</h1>
+    <div class="d-flex gap-3 align-items-center my-4">
+        @if (p.ImageIds.Count > 0) { <img src="/images/@p.ImageIds[0]" alt="@p.Name" style="width:88px;height:105px;object-fit:cover;border-radius:10px" /> }
+        <div><strong>@p.Name</strong><div class="subtitle small">@p.Brand · Size @p.Size · @p.Sku</div><div class="product-price">@p.AskingPrice.ToString("N0")đ</div></div>
+    </div>
+    <form asp-action="Make" method="post"><input asp-for="ProductId" type="hidden" /><div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+        <label asp-for="Price" class="form-label"></label><div class="input-group"><input asp-for="Price" type="number" step="1" min="@minimum" max="@(p.AskingPrice - 1)" class="form-control" autofocus /><span class="input-group-text">đ</span></div><span asp-validation-for="Price" class="text-danger small"></span>
+        <p class="form-text mt-2">Giá từ @minimum.ToString("N0")đ đến dưới @p.AskingPrice.ToString("N0")đ. Tối đa 3 lần gửi giá cho món đồ này, gồm cả trả giá tiếp sau phản đề xuất.</p>
+        <button class="btn btn-wine w-100 mt-3" type="submit">Gửi đề xuất giá →</button>
+    </form>
+</div></div></div>

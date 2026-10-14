@@ -1,0 +1,36 @@
+@model OfferDto
+@{ ViewData["Title"] = "Offer " + Model.ProductSku; var me = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+   var myTurn = (Model.Status == OfferStatus.PendingSeller && me == Model.SellerId) || (Model.Status == OfferStatus.PendingBuyer && me == Model.BuyerId);
+   var buyerCanCounter = me != Model.BuyerId || Model.BuyerOffersUsed < 3; }
+<div class="mt-4 mb-3"><a asp-action="Index">← Tất cả đề xuất giá</a></div>
+<div class="row g-4 mb-5"><div class="col-lg-7"><div class="panel">
+    <div class="d-flex justify-content-between align-items-start gap-2"><div><div class="eyebrow">@Model.ProductSku</div><h1 class="page-title mt-1 mb-1">@Model.ProductName</h1></div><span class="status-pill @Model.Status">@Model.Status</span></div>
+    <p class="subtitle">Giá niêm yết @Model.AskingPrice.ToString("N0")đ</p>
+    <div class="divider"></div><div class="spec-row"><span>Giá hiện tại</span><strong class="product-price">@Model.CurrentPrice.ToString("N0")đ</strong></div>
+    <div class="spec-row"><span>Hạn phản hồi / thanh toán</span><strong>@Model.ExpiresAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</strong></div>
+    <div class="spec-row"><span>Lượt gửi giá của người mua</span><strong>@Model.BuyerOffersUsed / 3</strong></div>
+    @if (Model.Status == OfferStatus.Accepted)
+    {
+        <div class="alert alert-success mt-4">Giá @Model.AcceptedPrice?.ToString("N0")đ chỉ dành cho người mua này trong 24 giờ. Sản phẩm vẫn mở bán cho tới khi có đơn hàng.</div>
+        @if ((bool?)ViewBag.PreviewMode == true) { <a asp-controller="Preview" asp-action="Checkout" class="btn btn-wine w-100">Xem màn hình đặt hàng →</a> }
+        else if (me == Model.BuyerId) { <a asp-controller="Checkout" asp-action="Index" asp-route-productId="@Model.ProductId" asp-route-offerId="@Model.Id" class="btn btn-wine w-100">Xác nhận đặt hàng →</a> }
+    }
+    else if (myTurn)
+    {
+        <div class="alert alert-light border mt-4">Đến lượt bạn phản hồi. Giá đề xuất sẽ hết hạn sau 24 giờ.</div>
+        <div class="d-flex flex-wrap gap-2">
+            <form asp-action="Respond" asp-route-id="@Model.Id" method="post"><input type="hidden" name="action" value="Accept" /><button class="btn btn-wine" type="submit">Chấp nhận</button></form>
+            <form asp-action="Respond" asp-route-id="@Model.Id" method="post"><input type="hidden" name="action" value="Decline" /><button class="btn btn-outline-danger" type="submit">Từ chối</button></form>
+        </div>
+        @if (buyerCanCounter)
+        {
+            <form asp-action="Respond" asp-route-id="@Model.Id" method="post" class="mt-3"><input type="hidden" name="action" value="Counter" /><label for="counterPrice" class="form-label">Đề xuất lại</label><div class="input-group"><input id="counterPrice" name="price" type="number" min="1" step="1" required class="form-control" placeholder="Nhập mức giá thỏa hiệp" /><button class="btn btn-outline-wine" type="submit">Gửi giá mới</button></div></form>
+        }
+    }
+    else if (Model.Status is OfferStatus.PendingSeller or OfferStatus.PendingBuyer)
+    { <div class="alert alert-light border mt-4">Đang chờ đối phương phản hồi.</div> }
+    else { <div class="alert alert-light border mt-4">Phiên đề xuất này đã kết thúc.</div> }
+</div></div>
+<div class="col-lg-5"><div class="panel"><h2 class="display-serif fs-4 mb-3">Lịch sử thương lượng</h2>
+    <ol class="offer-timeline">@foreach (var e in Model.Events) { <li><div class="small text-muted">@e.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm") · @(e.ActorId == me ? "Bạn" : "Đối phương")</div><strong>@e.Action</strong>@if (e.Price.HasValue) { <span class="ms-2">@e.Price.Value.ToString("N0")đ</span> }</li> }</ol>
+</div></div></div>

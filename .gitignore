@@ -1,0 +1,9 @@
+.dotnet/
+.nuget/
+.templateengine/
+**/bin/
+**/obj/
+**/TestResults/
+**/PrivateUploads/
+**/appsettings.Development.json
+dotnet-install.ps1

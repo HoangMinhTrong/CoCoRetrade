@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CoCoReTrade.Application/CoCoReTrade.Application.csproj" />
+    <Project Path="src/CoCoReTrade.Domain/CoCoReTrade.Domain.csproj" />
+    <Project Path="src/CoCoReTrade.Infrastructure/CoCoReTrade.Infrastructure.csproj" />
+    <Project Path="src/CoCoReTrade.Web/CoCoReTrade.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CoCoReTrade.Tests/CoCoReTrade.Tests.csproj" />
+  </Folder>
+</Solution>

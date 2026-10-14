@@ -1,0 +1,61 @@
+@model ProductDetails
+@inject MarketplacePolicy OfferPolicy
+@{ ViewData["Title"] = Model.Name; }
+<div class="mt-4 mb-3"><a asp-action="Index">← Khám phá</a> <span class="text-muted mx-2">/</span> @Model.Sku</div>
+<div class="row g-4 g-lg-5">
+    <div class="col-md-6">
+        @if (Model.ImageIds.Count > 0) { <img class="detail-main-image" src="/images/@Model.ImageIds[0]" alt="@Model.Name" />
+            <div class="thumbs">@foreach (var image in Model.ImageIds) { <img src="/images/@image" alt="Ảnh khác của @Model.Name" loading="lazy" /> }</div> }
+        else { <div class="detail-main-image product-placeholder">CoCo</div> }
+    </div>
+    <div class="col-md-6"><div class="detail-summary">
+        <div class="eyebrow">@Model.Brand · @Model.Category</div><h1 class="page-title mt-2">@Model.Name</h1>
+        <p class="subtitle mb-3">Mã ký gửi @(string.IsNullOrEmpty(Model.ConsignmentCode) ? Model.Sku : Model.ConsignmentCode)</p>
+        @if (Model.Status == ProductStatus.Active) { <span class="status-pill Active">✓ Đã kiểm định bởi CoCo</span> }
+        else { <span class="status-pill @Model.Status">@Model.Status</span> }
+        <div class="display-serif fs-2 mt-4" style="color:var(--wine)">@Model.AskingPrice.ToString("N0")đ</div>
+        <div class="divider"></div>
+        <div class="spec-row"><span>Thương hiệu</span><strong>@Model.Brand</strong></div>
+        <div class="spec-row"><span>Kích cỡ</span><strong>@Model.Size</strong></div>
+        <div class="spec-row"><span>Độ mới</span><strong>@(Model.VerifiedCondition ?? Model.DeclaredCondition)%</strong></div>
+        <div class="spec-row"><span>Giá gốc tham khảo</span><strong>@Model.OriginalPrice.ToString("N0")đ</strong></div>
+        @if (!string.IsNullOrWhiteSpace((string?)ViewBag.SellerName))
+        {
+            <div class="spec-row"><span>Người bán</span><strong><a asp-controller="Sellers" asp-action="Index" asp-route-id="@Model.SellerId">@ViewBag.SellerName</a></strong></div>
+            @if (User.Identity?.IsAuthenticated == true && Model.SellerId != User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value)
+            {
+                <form asp-controller="Social" asp-action="Follow" method="post" class="mt-3">
+                    <input type="hidden" name="sellerId" value="@Model.SellerId" />
+                    <input type="hidden" name="selected" value="@((bool)ViewBag.IsFollowing ? "false" : "true")" />
+                    <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                    <button type="submit" class="btn btn-outline-wine btn-sm">@((bool)ViewBag.IsFollowing ? "Đang theo dõi · Bỏ theo dõi" : "Theo dõi tủ đồ")</button>
+                </form>
+            }
+        }
+        @if (Model.Status == ProductStatus.Active && User.Identity?.IsAuthenticated == true)
+        {
+            <form asp-controller="Social" asp-action="Favorite" method="post" class="mt-2">
+                <input type="hidden" name="productId" value="@Model.Id" />
+                <input type="hidden" name="selected" value="@((bool)ViewBag.IsFavorite ? "false" : "true")" />
+                <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                <button type="submit" class="btn btn-outline-wine btn-sm">@((bool)ViewBag.IsFavorite ? "♥ Đã lưu · Bỏ lưu" : "♡ Lưu món đồ")</button>
+            </form>
+        }
+        @if (Model.Status == ProductStatus.Rejected) { <div class="alert alert-danger mt-4">Lý do từ chối: @Model.RejectionReason</div> }
+        @if (Model.Status == ProductStatus.Active && Model.SellerId != User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value)
+        {
+            <a class="btn btn-wine w-100 mt-4" asp-controller="Checkout" asp-action="Index" asp-route-productId="@Model.Id">Mua ngay · @Model.AskingPrice.ToString("N0")đ</a>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <form asp-controller="Cart" asp-action="Add" method="post"><input type="hidden" name="productId" value="@Model.Id" /><button type="submit" class="btn btn-outline-wine w-100 mt-2">Thêm vào giỏ</button></form>
+                <form asp-controller="Messages" asp-action="Start" method="post"><input type="hidden" name="productId" value="@Model.Id" /><button type="submit" class="btn btn-outline-wine w-100 mt-2">Nhắn người bán</button></form>
+            }
+        }
+        @if (Model.Status == ProductStatus.Active && Model.AllowOffers && Model.SellerId != User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value)
+        {
+            <a class="btn btn-outline-wine w-100 mt-2" asp-controller="Offers" asp-action="Make" asp-route-productId="@Model.Id">Trả giá · Make an offer</a>
+            <p class="form-text">Giảm tối đa @OfferPolicy.MaximumOfferDiscountPercent%; người bán có thể chấp nhận, từ chối hoặc đề xuất lại.</p>
+        }
+        @if (User.HasClaim(StaffPermissions.ClaimType, StaffPermissions.ReadPending) && Model.Status == ProductStatus.PendingApproval) { <a class="btn btn-wine mt-3" asp-area="Admin" asp-controller="Inspection" asp-action="Review" asp-route-id="@Model.Id">Kiểm định sản phẩm →</a> }
+    </div></div>
+</div>

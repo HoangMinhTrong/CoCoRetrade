@@ -1,0 +1,23 @@
+@model IReadOnlyList<ProductCard>
+@{ ViewData["Title"] = "Trang chủ"; }
+<section class="hero">
+    <div class="hero-content">
+        <div class="eyebrow">CoCo ReTrade · Curated secondhand</div>
+        <h1>Đồ đẹp<br />có thêm câu chuyện.</h1>
+        <p>Thời trang tuần hoàn có kiểm định. Mỗi món đồ được CoCo xem tận tay trước khi lên sàn.</p>
+        <a class="btn btn-wine mt-2" asp-controller="Shop" asp-action="Index">Khám phá ngay <span class="ms-2">→</span></a>
+    </div>
+    <span class="hero-fashion" aria-hidden="true">✦</span>
+</section>
+<div class="section-heading"><div><div class="eyebrow mb-2">Mua sắm theo phong cách</div><h2>Danh mục nổi bật</h2></div></div>
+<div class="category-chips">
+    <a asp-controller="Shop" asp-action="Index" asp-route-category="Áo">Áo</a>
+    <a asp-controller="Shop" asp-action="Index" asp-route-category="Quần">Quần</a>
+    <a asp-controller="Shop" asp-action="Index" asp-route-category="Đầm/Váy">Đầm / Váy</a>
+    <a asp-controller="Shop" asp-action="Index" asp-route-category="Túi">Túi</a>
+    <a asp-controller="Shop" asp-action="Index" asp-route-category="Phụ kiện">Phụ kiện</a>
+    <a asp-controller="Shop" asp-action="Index">Xem tất cả →</a>
+</div>
+<div class="section-heading mt-4"><div><div class="eyebrow mb-2">Đã qua kiểm định</div><h2>Mới lên kệ</h2><p>Những món đồ độc bản vừa được CoCo duyệt.</p></div><a asp-controller="Shop" asp-action="Index" class="fw-semibold">Xem tất cả →</a></div>
+<partial name="_ProductGrid" model="Model" />
+<section class="panel mt-5 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3" style="background:#f0e5e0"><div><div class="eyebrow mb-2">Tủ đồ của bạn</div><h2 class="display-serif mb-1">Để món cũ tìm chủ mới.</h2><p class="mb-0 subtitle">Gửi ảnh trước, CoCo kiểm định và đăng bán sau.</p></div><a class="btn btn-wine" asp-controller="Listing" asp-action="Create">Bắt đầu ký gửi →</a></section>
