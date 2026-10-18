@@ -20,7 +20,9 @@ public sealed class AdminProductRepository(AppDbContext db) : IAdminProductRepos
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
-            query = query.Where(x => x.Product.ConsignmentCode.Contains(term) || x.Product.Sku.Contains(term) ||
+            var compactCode = term.Replace("-", "").Replace(" ", "").ToUpperInvariant();
+            query = query.Where(x => x.Product.ConsignmentCode.Replace("-", "").Replace(" ", "").ToUpper().Contains(compactCode) ||
+                x.Product.Sku.Replace("-", "").Replace(" ", "").ToUpper().Contains(compactCode) ||
                 x.Product.Name.Contains(term) || x.SellerName.Contains(term));
         }
         return await query.OrderByDescending(x => x.Product.CreatedAtUtc).Take(200)

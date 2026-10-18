@@ -1,25 +1,40 @@
-@model IReadOnlyList<ProductCard>
+﻿@model IReadOnlyList<ProductCard>
 @{ ViewData["Title"] = "Giỏ hàng"; }
-<div class="eyebrow mt-4">Chọn món đồ yêu thích</div>
-<h1 class="page-title mt-1">Giỏ hàng</h1>
-<p class="subtitle">Thêm vào giỏ không giữ sản phẩm. Mỗi món đồ là độc bản và được đặt riêng khi bạn xác nhận đơn hàng.</p>
+<div class="page-heading"><div><span class="eyebrow">Những món bạn đã chọn</span><h1 class="page-title">Giỏ hàng <span class="count-label">@Model.Count</span></h1><p class="subtitle mb-0">Chọn món đồ muốn mua và xác nhận cách nhận hàng.</p></div><a class="text-link" asp-controller="Shop" asp-action="Index">Tiếp tục khám phá <svg class="icon" aria-hidden="true"><use href="/images/icons.svg#arrow-right" /></svg></a></div>
 @if (Model.Count == 0)
 {
-    <div class="empty-state mt-4"><div class="empty-icon">♡</div><h2 class="display-serif">Giỏ hàng đang trống</h2><a class="btn btn-wine mt-2" asp-controller="Shop" asp-action="Index">Khám phá sản phẩm</a></div>
+    <div class="empty-state"><div class="empty-icon"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#bag" /></svg></div><h2>Giỏ hàng đang chờ món đồ đầu tiên</h2><p>Lưu những món hợp gu vào giỏ, rồi quay lại chọn khi bạn sẵn sàng.</p><a class="btn btn-wine mt-2" asp-controller="Shop" asp-action="Index">Khám phá sản phẩm</a></div>
 }
 else
 {
-    <div class="row g-3 mb-5">
-        @foreach (var item in Model)
-        {
-            <div class="col-12"><article class="panel d-flex flex-column flex-sm-row gap-3 align-items-sm-center">
-                <a asp-controller="Shop" asp-action="Details" asp-route-id="@item.Id">
-                    @if (item.CoverImageId.HasValue) { <img src="/images/@item.CoverImageId" alt="@item.Name" class="cart-image" loading="lazy" /> }
-                    else { <span class="product-placeholder cart-image">CoCo</span> }
-                </a>
-                <div class="flex-grow-1"><div class="eyebrow">@item.Sku · @item.Brand</div><h2 class="display-serif fs-4 mb-1"><a asp-controller="Shop" asp-action="Details" asp-route-id="@item.Id">@item.Name</a></h2><div class="subtitle">Size @item.Size · @item.ConditionPercent% độ mới</div><strong>@item.AskingPrice.ToString("N0")đ</strong></div>
-                <div class="d-flex flex-sm-column gap-2"><a class="btn btn-wine" asp-controller="Checkout" asp-action="Index" asp-route-productId="@item.Id">Đặt mua</a><form asp-action="Remove" method="post"><input type="hidden" name="productId" value="@item.Id" /><button type="submit" class="btn btn-outline-wine w-100">Bỏ khỏi giỏ</button></form></div>
-            </article></div>
-        }
+    <div class="row g-4 cart-layout">
+        <div class="col-lg-8 cart-items">
+            @foreach (var item in Model)
+            {
+                <article class="panel cart-item d-flex gap-3 mb-3">
+                    <a class="flex-shrink-0" asp-controller="Shop" asp-action="Details" asp-route-id="@item.Id">
+                        @if (item.CoverImageId.HasValue) { <img src="/images/@item.CoverImageId" alt="@item.Name" class="cart-image" loading="lazy" /> }
+                        else { <span class="product-placeholder cart-image"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#bag" /></svg></span> }
+                    </a>
+                    <div class="flex-grow-1">
+                        <div class="product-card-brand">@item.Brand</div>
+                        <h2 class="h5 mb-1"><a asp-controller="Shop" asp-action="Details" asp-route-id="@item.Id">@item.Name</a></h2>
+                        <div class="small text-muted">Cỡ @UiText.For(item.Size) · Mới @item.ConditionPercent%</div>
+                        <div class="small text-muted mt-1">Mã sản phẩm: @item.Sku</div>
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3">
+                            <strong class="product-price">@item.AskingPrice.ToString("N0") VNĐ</strong>
+                            <div class="d-flex flex-wrap align-items-center gap-3"><form asp-action="Remove" method="post"><input type="hidden" name="productId" value="@item.Id" /><button type="submit" class="btn btn-link p-0 text-muted small" aria-label="Bỏ @item.Name khỏi giỏ">Bỏ khỏi giỏ</button></form><a class="btn btn-wine btn-sm" asp-controller="Checkout" asp-action="Index" asp-route-productId="@item.Id">Đặt mua</a></div>
+                        </div>
+                    </div>
+                </article>
+            }
+        </div>
+        <aside class="col-lg-4"><div class="panel cart-summary">
+            <span class="eyebrow">Mua sắm an tâm</span><h2 class="h4 mt-2 mb-3">Từng món đồ, từng đơn hàng</h2>
+            <p class="subtitle">Mỗi sản phẩm chỉ có một món. Bạn đặt mua riêng từng món để chọn cách nhận hàng phù hợp.</p>
+            <div class="d-flex gap-3 mb-3"><svg class="icon flex-shrink-0" aria-hidden="true"><use href="/images/icons.svg#package" /></svg><span>Lấy tại CoCo miễn phí hoặc giao hàng tận nơi.</span></div>
+            <div class="d-flex gap-3 mb-3"><svg class="icon flex-shrink-0" aria-hidden="true"><use href="/images/icons.svg#check" /></svg><span>Tổng tiền và phí giao hàng được hiển thị trước khi xác nhận.</span></div>
+            <div class="divider"></div><p class="small text-muted mb-0">Thêm vào giỏ chưa giữ sản phẩm. Món đồ chỉ được giữ khi bạn xác nhận đặt hàng thành công.</p>
+        </div></aside>
     </div>
 }

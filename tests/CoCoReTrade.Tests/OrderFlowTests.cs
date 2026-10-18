@@ -14,7 +14,7 @@ public sealed class OrderFlowTests
         var product = Product.Submit(Seller, "CC-2026-000300", "Áo khoác denim", "Zara", "Áo", "M",
             500_000, 300_000, 95, true,
             [new ProductImage("a.jpg", "image/jpeg", 0), new ProductImage("b.jpg", "image/jpeg", 1), new ProductImage("c.jpg", "image/jpeg", 2)]);
-        if (active) { product.RecordInspection("inspector-1", true, product.Name, product.Brand, product.Category, product.Size, product.OriginalPrice, product.AskingPrice, 95, "Physical item checked", "CC-2026-000300", [], Start.UtcDateTime); product.Publish(Start.UtcDateTime); }
+        if (active) { product.RecordInspection("inspector-1", true, product.Name, product.Brand, product.Category, product.Size, product.OriginalPrice, product.AskingPrice, 95, "Physical item checked", [], Start.UtcDateTime); product.Publish("CC-2026-000300", Start.UtcDateTime); }
         var store = new MemoryOrders(product);
         var clock = new ManualClock(Start);
         var service = new OrderService(store, new MarketplacePolicy(25, 15),

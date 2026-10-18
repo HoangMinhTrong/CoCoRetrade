@@ -51,4 +51,17 @@ public sealed class WalletsController(IAdminWalletService wallets, IWalletServic
         { TempData["Error"] = ex.Message; }
         return RedirectToAction(nameof(Index));
     }
+    [HttpPost]
+    public async Task<IActionResult> ConfirmTransfer(Guid id, string transferReference, bool confirmed, CancellationToken ct)
+    {
+        try
+        {
+            if (!confirmed) throw new ArgumentException("Xác nhận đã chuyển khoản thực tế trước khi lưu.");
+            await ledger.ConfirmTransferAsync(ActorId, id, transferReference, ct);
+            TempData["Message"] = "Đã ghi nhận giao dịch chuyển tiền. Người bán có thể xem trạng thái và mã giao dịch trong ví.";
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException)
+        { TempData["Error"] = ex.Message; }
+        return RedirectToAction(nameof(Index));
+    }
 }

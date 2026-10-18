@@ -124,6 +124,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             e.HasIndex(x => x.ProductId).IsUnique().HasFilter("[Status] <> 'Cancelled'");
             e.HasIndex(x => new { x.BuyerId, x.IdempotencyKey }).IsUnique();
             e.HasIndex(x => x.OfferId).IsUnique().HasFilter("[OfferId] IS NOT NULL");
+            e.HasIndex(x => x.PickupDeadlineAtUtc).HasFilter("[PickupDeadlineAtUtc] IS NOT NULL");
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
             e.Property(x => x.PaymentStatus).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.Fulfillment).HasConversion<string>().HasMaxLength(20);
@@ -226,10 +227,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             e.ToTable("WithdrawalRequests"); e.HasKey(x => x.Id); e.Property(x => x.Amount).HasColumnType("decimal(18,0)");
             e.HasIndex(x => new { x.WalletId, x.RequestKey }).IsUnique().HasFilter("[RequestKey] <> '00000000-0000-0000-0000-000000000000'");
             e.Property(x => x.BankAccountMasked).HasMaxLength(60).IsRequired();
+            e.Property(x => x.BankAccountNumber).HasMaxLength(30);
+            e.Property(x => x.BankName).HasMaxLength(100);
             e.Property(x => x.Status).HasMaxLength(20).IsRequired();
             e.Property(x => x.DecisionReason).HasMaxLength(1000);
+            e.Property(x => x.TransferReference).HasMaxLength(100);
+            e.Property(x => x.RowVersion).IsRowVersion();
             e.HasOne<Wallet>().WithMany().HasForeignKey(x => x.WalletId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.DecidedById).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.TransferredById).OnDelete(DeleteBehavior.Restrict);
         });
         b.Entity<MarketplaceNotification>(e =>
         {
@@ -237,6 +243,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             e.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<Offer>().WithMany().HasForeignKey(x => x.OfferId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Order>().WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Conversation>().WithMany().HasForeignKey(x => x.ConversationId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.UserId, x.CreatedAtUtc });
         });
         b.Entity<OutboxMessage>(e =>
         {

@@ -49,7 +49,18 @@ public sealed class AdminWalletsController(IAdminWalletService wallets, IWalletS
         catch (ArgumentException ex) { return BadRequest(new { error = ex.Message }); }
         catch (InvalidOperationException ex) { return Conflict(new { error = ex.Message }); }
     }
+    [HttpPost("withdrawals/{id:guid}/confirm-transfer")]
+    public async Task<ActionResult<WithdrawalDto>> ConfirmTransfer(Guid id,
+        [FromBody] ConfirmWithdrawalTransferRequest request, CancellationToken ct)
+    {
+        if (!request.Confirmed) return BadRequest(new { error = "Hãy xác nhận đã chuyển khoản thực tế trước." });
+        try { return Ok(await ledger.ConfirmTransferAsync(ActorId, id, request.TransferReference, ct)); }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (ArgumentException ex) { return BadRequest(new { error = ex.Message }); }
+        catch (InvalidOperationException ex) { return Conflict(new { error = ex.Message }); }
+    }
 }
 
 public sealed record ConfirmPayoutRequest(bool Confirmed);
 public sealed record RejectWithdrawalRequest(string Reason);
+public sealed record ConfirmWithdrawalTransferRequest(string TransferReference, bool Confirmed);

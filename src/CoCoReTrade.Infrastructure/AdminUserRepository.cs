@@ -44,7 +44,7 @@ public sealed class AdminUserRepository(AppDbContext db, UserManager<Application
     public Task SetPublishGrantAsync(string targetId, bool enabled, string actorId, DateTime nowUtc, CancellationToken ct) =>
         Change(targetId, actorId, nowUtc, enabled ? "Users.PublishGranted" : "Users.PublishRevoked", async user =>
         {
-            if (!await users.IsInRoleAsync(user, "Inspector")) throw new InvalidOperationException("Target is not an inspector.");
+            if (!await users.IsInRoleAsync(user, "Inspector")) throw new InvalidOperationException("Người dùng này không phải kiểm định viên.");
             var has = (await users.GetClaimsAsync(user)).Any(x => x.Type == StaffPermissions.ClaimType && x.Value == StaffPermissions.Publish);
             if (enabled && !has) await Ensure(await users.AddClaimAsync(user, new Claim(StaffPermissions.ClaimType, StaffPermissions.Publish)));
             if (!enabled && has) await RemovePublishClaim(user);
@@ -62,14 +62,14 @@ public sealed class AdminUserRepository(AppDbContext db, UserManager<Application
             user.TrustScore = score;
             user.TrustSuspended = score < minimumScore;
             await Ensure(await users.UpdateAsync(user));
-        }, ct, $"TrustScore={score}; suspended={score < minimumScore}; reason={reason}");
+        }, ct, $"Điểm tín nhiệm={score}; tạm khóa={(score < minimumScore ? "có" : "không")}; lý do={reason}");
 
     private async Task Change(string targetId, string actorId, DateTime nowUtc, string action,
         Func<ApplicationUser, Task> work, CancellationToken ct, string? details = null)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        var user = await users.FindByIdAsync(targetId) ?? throw new KeyNotFoundException("User not found.");
-        if (await users.IsInRoleAsync(user, "Admin")) throw new InvalidOperationException("Admin accounts cannot be changed here.");
+        var user = await users.FindByIdAsync(targetId) ?? throw new KeyNotFoundException("Không tìm thấy người dùng.");
+        if (await users.IsInRoleAsync(user, "Admin")) throw new InvalidOperationException("Không thể thay đổi tài khoản quản trị tại đây.");
         await work(user);
         await Ensure(await users.UpdateSecurityStampAsync(user));
         db.AuditLogs.Add(new AuditLog { Id = Guid.NewGuid(), ActorId = actorId, Action = action,

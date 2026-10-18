@@ -2,7 +2,7 @@
 @{ ViewData["Title"] = "Tin nhắn về " + Model.Summary.ProductName; var myId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value; }
 <div class="mt-4 mb-3"><a asp-action="Index">← Tất cả tin nhắn</a></div>
 <div class="eyebrow">@Model.Summary.ProductSku · @Model.Summary.OtherUserName</div><h1 class="page-title mt-1">@Model.Summary.ProductName</h1>
-<p id="connection-status" class="small text-muted" role="status" aria-live="polite">Tin nhắn được lưu trên CoCo; có thể gửi bằng form này.</p>
+<p id="connection-status" class="small text-muted" role="status" aria-live="polite">Tin nhắn được lưu trên CoCo; có thể gửi bằng biểu mẫu này.</p>
 <div id="conversation-thread" class="panel mb-3 message-thread" role="log" aria-live="polite"
      aria-label="Nội dung trò chuyện" data-conversation-id="@Model.Summary.Id" data-current-user-id="@myId">
     @if (Model.Messages.Count == 0) { <p id="empty-conversation" class="subtitle mb-0">Hãy gửi lời nhắn đầu tiên để bắt đầu trò chuyện.</p> }

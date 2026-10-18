@@ -1,11 +1,25 @@
-@model RegisterForm
+﻿@model RegisterForm
 @{ ViewData["Title"] = "Đăng ký"; }
-<div class="auth-card panel"><div class="eyebrow">Gia nhập cộng đồng</div><h1 class="mt-2">Tạo tài khoản</h1><p class="subtitle">Một tài khoản để mua sắm và ký gửi tại CoCo.</p>
-<form asp-action="Register" method="post" class="mt-4"><div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-    <div class="mb-3"><label asp-for="FullName" class="form-label"></label><input asp-for="FullName" class="form-control" autocomplete="name" /><span asp-validation-for="FullName" class="text-danger small"></span></div>
-    <div class="mb-3"><label asp-for="Phone" class="form-label"></label><input asp-for="Phone" class="form-control" inputmode="tel" autocomplete="tel" /><span asp-validation-for="Phone" class="text-danger small"></span></div>
-    <div class="mb-3"><label asp-for="Email" class="form-label"></label><input asp-for="Email" class="form-control" autocomplete="email" /><span asp-validation-for="Email" class="text-danger small"></span></div>
-    <div class="mb-3"><label asp-for="Password" class="form-label"></label><input asp-for="Password" class="form-control" autocomplete="new-password" /><span asp-validation-for="Password" class="text-danger small"></span></div>
-    <div class="mb-4"><label asp-for="ConfirmPassword" class="form-label"></label><input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" /><span asp-validation-for="ConfirmPassword" class="text-danger small"></span></div>
-    <button class="btn btn-wine w-100" type="submit">Tạo tài khoản →</button>
-</form><p class="text-center mt-4 mb-0">Đã có tài khoản? <a asp-action="Login" class="fw-semibold">Đăng nhập</a></p></div>
+<div class="auth-shell">
+    <aside class="auth-story">
+        <span class="eyebrow">Gia nhập cộng đồng CoCo</span>
+        <h2>Mặc đẹp hơn.<br />Tiêu dùng nhẹ nhàng hơn.</h2>
+        <p>Một tài khoản để khám phá, mua sắm và ký gửi. Bắt đầu từ món đồ bạn yêu thích.</p>
+        <div class="auth-benefit"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#bag" /></svg> Mua và bán trên cùng một tài khoản</div>
+        <div class="auth-benefit"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#message" /></svg> Trao đổi trực tiếp với người bán</div>
+        <div class="auth-benefit"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#shield" /></svg> CoCo đồng hành trong từng bước ký gửi</div>
+    </aside>
+    <div class="auth-form-panel">
+        <span class="eyebrow">Bắt đầu cùng CoCo</span><h1 class="page-title mt-2">Tạo tài khoản</h1><p class="subtitle">Điền thông tin để có tủ đồ của riêng bạn.</p>
+        <form asp-action="Register" method="post" class="mt-4">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+            <div class="mb-3"><label asp-for="FullName" class="form-label"></label><input asp-for="FullName" class="form-control" autocomplete="name" placeholder="Tên bạn muốn CoCo gọi" /><span asp-validation-for="FullName" class="text-danger small"></span></div>
+            <div class="mb-3"><label asp-for="Phone" class="form-label"></label><input asp-for="Phone" class="form-control" inputmode="tel" autocomplete="tel" placeholder="Số di động gồm 10 chữ số" /><span asp-validation-for="Phone" class="text-danger small"></span></div>
+            <div class="mb-3"><label asp-for="Email" class="form-label"></label><input asp-for="Email" class="form-control" autocomplete="email" placeholder="Địa chỉ email của bạn" /><span asp-validation-for="Email" class="text-danger small"></span></div>
+            <div class="mb-3"><label asp-for="Password" class="form-label"></label><input asp-for="Password" class="form-control" autocomplete="new-password" placeholder="Tối thiểu 8 ký tự" /><span asp-validation-for="Password" class="text-danger small"></span></div>
+            <div class="mb-4"><label asp-for="ConfirmPassword" class="form-label"></label><input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" placeholder="Nhập lại mật khẩu" /><span asp-validation-for="ConfirmPassword" class="text-danger small"></span></div>
+            <button class="btn btn-wine w-100" type="submit">Tạo tài khoản <svg class="icon" aria-hidden="true"><use href="/images/icons.svg#arrow-right" /></svg></button>
+        </form>
+        <p class="text-center mt-4 mb-0">Đã có tài khoản? <a asp-action="Login" class="fw-semibold">Đăng nhập</a></p>
+    </div>
+</div>

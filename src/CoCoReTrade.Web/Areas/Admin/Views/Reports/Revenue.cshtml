@@ -1,0 +1,25 @@
+@model AdminFinancialReport
+@{
+    ViewData["Title"] = "Báo cáo doanh thu";
+    var selectedDate = Context.Request.Query["date"].FirstOrDefault() ?? DateTime.UtcNow.AddHours(7).ToString("yyyy-MM-dd");
+    var selectedPeriod = Context.Request.Query["period"].FirstOrDefault() ?? "month";
+}
+<header class="admin-page-header"><div><div class="eyebrow">Tài chính CoCo</div><h1 class="page-title">Báo cáo doanh thu</h1><p class="subtitle mb-0">Hoa hồng và thu nhập từ các đơn đã hoàn tất, đã xác nhận thanh toán.</p></div><span class="admin-status">Giờ Việt Nam</span></header>
+<form method="get" asp-area="Admin" asp-controller="Reports" asp-action="Revenue" class="panel admin-toolbar mb-4">
+    <div><label class="form-label" for="period">Xem theo</label><select class="form-select" id="period" name="period"><option value="day" selected="@(selectedPeriod == "day")">Ngày</option><option value="week" selected="@(selectedPeriod == "week")">Tuần</option><option value="month" selected="@(selectedPeriod == "month")">Tháng</option></select></div>
+    <div><label class="form-label" for="date">Chọn ngày làm mốc</label><input class="form-control" type="date" id="date" name="date" value="@selectedDate" /></div>
+    <button type="submit" class="btn btn-wine"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#filter" /></svg> Xem báo cáo</button>
+    <div class="ms-lg-auto small text-muted">Kỳ báo cáo<strong class="d-block text-body mt-1">@Model.FromDate.ToString("dd/MM/yyyy") – @Model.ThroughDate.ToString("dd/MM/yyyy")</strong></div>
+</form>
+<div class="row g-3 mb-4">
+    <div class="col-12 col-lg-6"><div class="panel admin-metric-card admin-publish-panel h-100"><div class="d-flex align-items-center justify-content-between gap-2"><h2 class="fs-6 mb-0">Hoa hồng CoCo nhận được</h2><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#chart" /></svg></div><div class="admin-metric-value fs-2">@Model.CommissionAmount.ToString("N0") <span class="fs-6">VNĐ</span></div><p class="small text-muted mb-0">Tính trên giá bán cuối cùng, không bao gồm phí giao hàng.</p></div></div>
+    <div class="col-12 col-lg-6"><div class="panel admin-metric-card h-100"><div class="d-flex align-items-center justify-content-between gap-2"><h2 class="fs-6 mb-0">Người ký gửi được hưởng</h2><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#wallet" /></svg></div><div class="admin-metric-value fs-2">@Model.SellerNetAmount.ToString("N0") <span class="fs-6">VNĐ</span></div><p class="small text-muted mb-0">Tiền bán hàng sau khi trừ hoa hồng cho CoCo.</p></div></div>
+    <div class="col-12 col-md-4"><div class="panel admin-metric-card h-100"><h2 class="fs-6 text-muted">Đơn hoàn tất</h2><div class="admin-metric-value fs-3">@Model.CompletedOrderCount</div></div></div>
+    <div class="col-12 col-md-4"><div class="panel admin-metric-card h-100"><h2 class="fs-6 text-muted">Đã ghi có vào ví người bán</h2><div class="admin-metric-value fs-4">@Model.SellerWalletCreditedAmount.ToString("N0") <span class="fs-6">VNĐ</span></div></div></div>
+    <div class="col-12 col-md-4"><div class="panel admin-metric-card h-100"><h2 class="fs-6 text-muted">Còn chờ ghi có</h2><div class="admin-metric-value fs-4">@Model.SellerWalletPendingAmount.ToString("N0") <span class="fs-6">VNĐ</span></div></div></div>
+</div>
+@if (Model.CompletedOrderCount == 0)
+{
+    <div class="panel mb-4 d-flex align-items-start gap-3"><svg class="icon flex-shrink-0" aria-hidden="true"><use href="/images/icons.svg#chart" /></svg><div><h2 class="fs-6">Chưa có doanh thu trong kỳ này</h2><p class="small text-muted mb-0">Chọn một ngày hoặc khoảng thời gian khác để xem các đơn đã hoàn tất.</p></div></div>
+}
+<details class="panel mb-5"><summary class="fw-semibold">Các số liệu này được tính thế nào?</summary><p class="small text-muted mt-3 mb-0">Hoa hồng được cộng từ giá trị đã lưu trên các đơn hoàn tất trong kỳ. Thu nhập của người ký gửi bằng tiền hàng sau khi trừ hoa hồng CoCo; phí giao hàng không tính vào hoa hồng. Số đã ghi có vào ví lấy từ sổ giao dịch ví của các đơn này. Đơn chỉ mới đặt hoặc chưa xác nhận thanh toán chưa được tính vào báo cáo.</p></details>

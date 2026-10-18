@@ -1,68 +1,105 @@
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@inject CoCoReTrade.Application.IUserProfileService UserProfiles
+@inject IAuthorizationService Authorization
+@{
+    CoCoReTrade.Application.UserProfileDto? headerProfile = null;
+    var headerUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    if (signedIn && !string.IsNullOrWhiteSpace(headerUserId))
+        headerProfile = await UserProfiles.GetAsync(headerUserId, Context.RequestAborted);
+    var inAdmin = string.Equals(ViewContext.RouteData.Values["area"]?.ToString(), "Admin", StringComparison.OrdinalIgnoreCase);
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
+    var canAdmin = signedIn && (await Authorization.AuthorizeAsync(User, StaffPermissions.ReadPending)).Succeeded;
+    var name = headerProfile?.FullName ?? User.Identity?.Name ?? "Tài khoản";
+    string Selected(string target, string? targetAction = null) => !inAdmin && controller == target && (targetAction == null || action == targetAction) ? "is-active" : "";
+}
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#783d48" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
     <title>@ViewData["Title"] · CoCo ReTrade</title>
+    <link rel="icon" href="~/images/coco-logo.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body>
+<body class="@(inAdmin ? "admin-workspace" : "storefront")">
+    <a class="skip-link" href="#main-content">Đi đến nội dung chính</a>
     @if (Context.RequestServices.GetRequiredService<IConfiguration>().GetValue<bool>("Preview:Enabled") && Context.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
     {
-        <div class="preview-banner">Bản xem giao diện · dữ liệu minh họa · cần SQL Server để đăng nhập và giao dịch <a asp-controller="Preview" asp-action="Index">Xem các màn hình →</a></div>
+        <div class="preview-banner">Bản xem giao diện · dữ liệu minh họa <a asp-area="" asp-controller="Preview" asp-action="Index">Xem các màn hình →</a></div>
     }
     <header class="site-header">
-        <div class="container d-flex align-items-center justify-content-between py-3">
-            <a class="brand" asp-area="" asp-controller="Home" asp-action="Index"><span class="brand-mark">C<span>o</span>C<span>o</span></span><span class="brand-sub">RETRADE</span></a>
-            <nav class="d-none d-lg-flex align-items-center gap-4 main-nav" aria-label="Điều hướng chính">
-                <a asp-area="" asp-controller="Home" asp-action="Index">Trang chủ</a>
-                <a asp-area="" asp-controller="Shop" asp-action="Index">Khám phá</a>
-                <a asp-area="" asp-controller="Listing" asp-action="Create">Đăng bán</a>
-                @if (User.IsInRole("Admin")) { <a asp-area="Admin" asp-controller="Inspection" asp-action="Index">Kiểm định</a><a asp-area="Admin" asp-controller="Orders" asp-action="Index">Đơn hàng</a> }
-                @if (User.HasClaim(StaffPermissions.ClaimType, StaffPermissions.ReadPending) && !User.IsInRole("Admin"))
-                { <a asp-area="Admin" asp-controller="Inspection" asp-action="Index">Kiểm định</a> }
-                @if (User.IsInRole("Admin"))
-                { <a asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Quản trị</a><a asp-area="Admin" asp-controller="HelpDesk" asp-action="Index">Hỗ trợ</a> }
-            </nav>
-            <div class="d-flex align-items-center gap-2 header-actions">
-                @if (User.Identity?.IsAuthenticated == true)
+        <div class="container header-inner">
+            @if (inAdmin)
+            {
+                <button type="button" class="icon-link d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#admin-navigation" aria-controls="admin-navigation" aria-label="Mở menu quản trị"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#menu"></use></svg></button>
+            }
+            <a class="brand" asp-area="" asp-controller="Home" asp-action="Index" aria-label="CoCo ReTrade — Trang chủ"><img src="~/images/coco-logo.svg" asp-append-version="true" width="100" height="78" alt="CoCo ReTrade" /></a>
+            @if (inAdmin)
+            {
+                <div class="workspace-label d-none d-md-flex"><span class="workspace-dot"></span>Không gian quản trị</div>
+                <a class="back-to-shop d-none d-lg-inline-flex" asp-area="" asp-controller="Home" asp-action="Index">Về cửa hàng <svg class="icon" aria-hidden="true"><use href="/images/icons.svg#arrow-right"></use></svg></a>
+            }
+            else
+            {
+                <nav class="main-nav d-none d-lg-flex" aria-label="Điều hướng chính">
+                    <a class="@Selected("Home", "Index")" asp-area="" asp-controller="Home" asp-action="Index">Trang chủ</a>
+                    <a class="@Selected("Shop")" asp-area="" asp-controller="Shop" asp-action="Index">Khám phá</a>
+                    <a class="@Selected("Listing", "Create")" asp-area="" asp-controller="Listing" asp-action="Create">Ký gửi cùng CoCo</a>
+                    @if (canAdmin) { <a class="staff-entry" asp-area="Admin" asp-controller="Dashboard" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#grid"></use></svg> Quản trị</a> }
+                </nav>
+            }
+            <div class="header-actions">
+                @if (signedIn)
                 {
-                    <a class="icon-link unread-link" asp-area="" asp-controller="Messages" asp-action="Index" aria-label="Tin nhắn" data-unread-label="Tin nhắn" title="Tin nhắn">✉<span class="unread-count" data-unread-badge="messages" aria-hidden="true" hidden></span></a>
-                    <a class="icon-link" asp-area="" asp-controller="Cart" asp-action="Index" aria-label="Giỏ hàng" title="Giỏ hàng">🛍</a>
-                    <a class="icon-link unread-link" asp-area="" asp-controller="Profile" asp-action="Notifications" aria-label="Thông báo" data-unread-label="Thông báo" title="Thông báo">♡<span class="unread-count" data-unread-badge="notifications" aria-hidden="true" hidden></span></a>
-                    <a class="btn btn-dark btn-sm rounded-pill px-3 d-none d-sm-inline-block" asp-area="" asp-controller="Profile" asp-action="Index">Tài khoản</a>
+                    <a class="icon-link unread-link" asp-area="" asp-controller="Messages" asp-action="Index" aria-label="Tin nhắn" data-unread-label="Tin nhắn" title="Tin nhắn"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#message"></use></svg><span class="unread-count" data-unread-badge="messages" aria-hidden="true" hidden></span></a>
+                    <a class="icon-link @(inAdmin ? "d-none d-md-inline-flex" : "")" asp-area="" asp-controller="Cart" asp-action="Index" aria-label="Giỏ hàng" title="Giỏ hàng"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#bag"></use></svg></a>
+                    <a class="icon-link unread-link d-none d-sm-inline-flex" asp-area="" asp-controller="Profile" asp-action="Notifications" aria-label="Thông báo" data-unread-label="Thông báo" title="Thông báo"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#bell"></use></svg><span class="unread-count" data-unread-badge="notifications" aria-hidden="true" hidden></span></a>
+                    <a class="account-link" asp-area="" asp-controller="Profile" asp-action="Index" aria-label="Tài khoản của @name">
+                        @if (headerProfile?.HasAvatar == true) { <img class="header-avatar" src="/avatars/@headerProfile.Id" alt="" width="32" height="32" /> }
+                        else { <span class="header-avatar header-avatar-empty" aria-hidden="true">@(name.FirstOrDefault().ToString().ToUpperInvariant())</span> }
+                        <span class="account-name">@name</span>
+                    </a>
                 }
                 else
                 {
-                    <a class="btn btn-outline-dark btn-sm rounded-pill px-3" asp-area="" asp-controller="Account" asp-action="Login">Đăng nhập</a>
+                    <a class="icon-link" asp-area="" asp-controller="Shop" asp-action="Index" aria-label="Tìm sản phẩm"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#search"></use></svg></a>
+                    <a class="btn btn-wine btn-sm" asp-area="" asp-controller="Account" asp-action="Login">Đăng nhập</a>
                 }
             </div>
         </div>
-        @if (User.IsInRole("Admin"))
-        {
-            <div class="admin-strip"><div class="container">Tài khoản kiểm định viên <span>·</span> <a asp-area="Admin" asp-controller="Inspection" asp-action="Index">Sản phẩm chờ duyệt</a> <span>·</span> <a asp-area="Admin" asp-controller="Orders" asp-action="Index">Quản lý đơn hàng →</a></div></div>
-        }
-        @if (User.HasClaim(StaffPermissions.ClaimType, StaffPermissions.ReadPending) && !User.IsInRole("Admin"))
-        { <div class="admin-strip"><div class="container"><a asp-area="Admin" asp-controller="Inspection" asp-action="Index">Ký gửi chờ kiểm định →</a></div></div> }
     </header>
-    <main class="container content-wrap" role="main">
-        @if (TempData["Message"] is string message) { <div class="alert alert-success mt-3" role="status">@message</div> }
-        @if (TempData["Error"] is string error) { <div class="alert alert-danger mt-3" role="alert">@error</div> }
-        @RenderBody()
-    </main>
-    <footer class="site-footer d-none d-lg-block"><div class="container d-flex justify-content-between"><span>© 2026 CoCo ReTrade · Thời trang tuần hoàn có kiểm định</span><span>Ký gửi có chọn lọc · Mua sắm an tâm</span></div></footer>
-    <nav class="bottom-nav d-lg-none" aria-label="Điều hướng di động">
-        <a asp-area="" asp-controller="Home" asp-action="Index"><span>⌂</span><small>Trang chủ</small></a>
-        <a asp-area="" asp-controller="Shop" asp-action="Index"><span>⌕</span><small>Tìm kiếm</small></a>
-        <a class="sell-tab" asp-area="" asp-controller="Listing" asp-action="Create"><span>+</span><small>Đăng bán</small></a>
-        <a class="unread-link" asp-area="" asp-controller="Profile" asp-action="Notifications" aria-label="Thông báo" data-unread-label="Thông báo"><span class="nav-icon">♧<span class="unread-count" data-unread-badge="notifications" aria-hidden="true" hidden></span></span><small>Thông báo</small></a>
-        <a asp-area="" asp-controller="Profile" asp-action="Index"><span>♙</span><small>Tôi</small></a>
-    </nav>
+    <div class="@(inAdmin ? "admin-shell" : "storefront-shell")">
+        @if (inAdmin)
+        {
+            <aside class="admin-sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="admin-navigation" aria-labelledby="admin-nav-title">
+                <div class="offcanvas-header"><h2 id="admin-nav-title" class="fs-5 mb-0">Quản trị CoCo</h2><button class="btn-close" type="button" data-bs-dismiss="offcanvas" data-bs-target="#admin-navigation" aria-label="Đóng menu"></button></div>
+                <div class="offcanvas-body"><partial name="_AdminNavigation" /></div>
+            </aside>
+        }
+        <main id="main-content" class="@(inAdmin ? "admin-content" : "container content-wrap")" tabindex="-1">
+            @if (TempData["Message"] is string message) { <div class="alert alert-success mt-3" role="status"><svg class="icon me-2" aria-hidden="true"><use href="/images/icons.svg#check"></use></svg>@message</div> }
+            @if (TempData["Error"] is string error) { <div class="alert alert-danger mt-3" role="alert">@error</div> }
+            @RenderBody()
+        </main>
+    </div>
+    @if (!inAdmin)
+    {
+        <footer class="site-footer"><div class="container footer-inner"><div class="footer-brand"><img src="~/images/coco-logo.svg" alt="CoCo ReTrade" width="78" height="61" /><p>Thêm vòng đời cho món đồ.<br />Thêm lựa chọn cho bạn.</p></div><nav aria-label="Thông tin CoCo"><a asp-area="" asp-controller="Home" asp-action="Terms">Chính sách & quy định</a><a asp-area="" asp-controller="Support" asp-action="Index">Trung tâm hỗ trợ</a><span>© @DateTime.UtcNow.Year CoCo ReTrade</span></nav></div></footer>
+        <nav class="bottom-nav d-lg-none" aria-label="Điều hướng di động">
+            <a class="@Selected("Home", "Index")" asp-area="" asp-controller="Home" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#home"></use></svg><span>Trang chủ</span></a>
+            <a class="@Selected("Shop")" asp-area="" asp-controller="Shop" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#search"></use></svg><span>Khám phá</span></a>
+            <a class="sell-tab @Selected("Listing", "Create")" asp-area="" asp-controller="Listing" asp-action="Create"><span class="sell-icon"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#plus"></use></svg></span><span>Ký gửi</span></a>
+            <a class="unread-link @Selected("Profile", "Notifications")" asp-area="" asp-controller="Profile" asp-action="Notifications" aria-label="Thông báo" data-unread-label="Thông báo"><span class="nav-icon"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#bell"></use></svg><span class="unread-count" data-unread-badge="notifications" aria-hidden="true" hidden></span></span><span>Thông báo</span></a>
+            <a class="@Selected("Profile", "Index")" asp-area="" asp-controller="Profile" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#user"></use></svg><span>Cá nhân</span></a>
+        </nav>
+    }
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    @if (User.Identity?.IsAuthenticated == true)
-    { <script src="~/lib/signalr/signalr.min.js" asp-append-version="true"></script> }
+    @if (signedIn) { <script src="~/lib/signalr/signalr.min.js" asp-append-version="true"></script> }
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

@@ -2,8 +2,15 @@
 @{ ViewData["Title"] = "Chi tiết ví"; }
 <div class="mt-4"><a asp-action="Index">← Danh sách ví</a></div>
 <h1 class="page-title mt-3">Ví của @Model.Wallet.OwnerName</h1><p class="subtitle">@Model.Wallet.OwnerEmail</p>
-<div class="panel mb-4"><div class="eyebrow">Số dư hiện tại</div><div class="display-serif fs-2">@Model.Wallet.Balance.ToString("N0") đ</div></div>
+<div class="panel mb-4"><div class="eyebrow">Số dư hiện tại</div><div class="display-serif fs-2">@Model.Wallet.Balance.ToString("N0") VNĐ</div></div>
 <h2 class="display-serif fs-4">Giao dịch</h2><div class="panel table-responsive mb-4"><table class="table"><thead><tr><th>Thời gian UTC</th><th>Loại</th><th>Số tiền</th><th>Đơn hàng</th></tr></thead><tbody>
 @foreach (var t in Model.Transactions)
-{ <tr><td>@t.CreatedAtUtc.ToString("dd/MM/yyyy HH:mm")</td><td>@t.Type</td><td>@t.Amount.ToString("N0") đ</td><td>@t.OrderId</td></tr> }
+{ <tr><td>@t.CreatedAtUtc.ToString("dd/MM/yyyy HH:mm")</td><td>@UiText.For(t.Type)</td><td>@t.Amount.ToString("N0") VNĐ
+    @if (t.Type == "WithdrawalSettled") { <small class="text-muted d-block">Tiền đã giữ khi người bán gửi yêu cầu; bước này không trừ thêm.</small> }
+    </td><td>@(t.OrderId?.ToString() ?? t.WithdrawalRequestId?.ToString())</td></tr> }
 </tbody></table>@if (Model.Transactions.Count == 0) { <p class="text-muted">Chưa có giao dịch.</p> }</div>
+<h2 class="display-serif fs-4">Yêu cầu rút tiền</h2>
+<div class="panel table-responsive mb-5"><table class="table align-middle mb-0"><thead><tr><th>Ngân hàng</th><th>Số tài khoản</th><th>Số tiền</th><th>Trạng thái</th><th>Mã chuyển khoản</th></tr></thead><tbody>
+@foreach (var request in Model.Withdrawals)
+{ <tr><td>@(request.BankName ?? "Yêu cầu cũ")</td><td>@request.BankAccountNumber</td><td>@request.Amount.ToString("N0") VNĐ</td><td>@UiText.For(request.Status)</td><td>@request.TransferReference</td></tr> }
+</tbody></table>@if (Model.Withdrawals.Count == 0) { <p class="text-muted my-3">Chưa có yêu cầu rút tiền.</p> }</div>

@@ -53,7 +53,7 @@ public sealed class PrivateImageStore : IPrivateImageStore
         Task.FromResult<Stream>(File.OpenRead(SafePath(key)));
     private string SafePath(string key)
     {
-        if (!Regex.IsMatch(key, "^[a-f0-9]{32}\\.(jpg|jpeg|png|webp)$")) throw new ArgumentException("Invalid storage key.");
+        if (!Regex.IsMatch(key, "^[a-f0-9]{32}\\.(jpg|jpeg|png|webp)$")) throw new ArgumentException("Mã lưu trữ ảnh không hợp lệ.");
         return Path.Combine(_root, key);
     }
     private static bool Matches(byte[] h, string ext) => ext switch

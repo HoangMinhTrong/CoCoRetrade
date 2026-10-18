@@ -1,5 +1,19 @@
 @model IReadOnlyList<SupportTicketRow>
 @{ ViewData["Title"] = "Yêu cầu hỗ trợ"; }
-<div class="eyebrow mt-4">Quản trị CoCo</div><h1 class="page-title mt-1">Yêu cầu hỗ trợ</h1>
-@if (Model.Count == 0) { <div class="empty-state mt-4">Chưa có yêu cầu hỗ trợ.</div> }
-else { <div class="row g-2 mb-5">@foreach (var ticket in Model) { <div class="col-12"><a class="panel d-flex justify-content-between gap-3 text-decoration-none" asp-action="Details" asp-route-id="@ticket.Id"><span><strong>@ticket.Subject</strong><br /><small>@ticket.UserName · @ticket.LastActivityAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small></span><span>@(ticket.Status == SupportTicketStatus.Open ? "Đang xử lý" : "Đã đóng")</span></a></div> }</div> }
+<header class="admin-page-header"><div><div class="eyebrow">Chăm sóc khách hàng</div><h1 class="page-title">Yêu cầu hỗ trợ</h1><p class="subtitle mb-0">Mở cuộc trao đổi để giải đáp và theo dõi vấn đề của khách hàng.</p></div><span class="admin-status">@Model.Count yêu cầu trong danh sách</span></header>
+@if (Model.Count == 0)
+{
+    <div class="empty-state"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#message" /></svg><h2 class="fs-4 mt-3">Chưa có yêu cầu hỗ trợ</h2><p class="mb-0">Các yêu cầu mới từ khách hàng sẽ xuất hiện tại đây.</p></div>
+}
+else
+{
+    <div class="row g-3 mb-5">
+    @foreach (var ticket in Model)
+    {
+        <div class="col-12"><a class="panel admin-record-card d-flex align-items-center justify-content-between flex-wrap gap-3 text-decoration-none" asp-action="Details" asp-route-id="@ticket.Id">
+            <div class="d-flex align-items-start gap-3"><svg class="icon flex-shrink-0 mt-1" aria-hidden="true"><use href="/images/icons.svg#message" /></svg><div><h2 class="fs-6 mb-2">@ticket.Subject</h2><div class="small text-muted">@ticket.UserName · Cập nhật @ticket.LastActivityAtUtc.AddHours(7).ToString("dd/MM/yyyy HH:mm")</div></div></div>
+            <div class="d-flex align-items-center gap-3"><span class="admin-status @(ticket.Status == SupportTicketStatus.Open ? "admin-status--warning" : "admin-status--muted")">@(ticket.Status == SupportTicketStatus.Open ? "Đang xử lý" : "Đã đóng")</span><span aria-hidden="true">→</span></div>
+        </a></div>
+    }
+    </div>
+}

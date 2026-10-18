@@ -56,42 +56,38 @@ public sealed class Product
     public List<Inspection> Inspections { get; private set; } = [];
     public Guid? LatestInspectionId { get; private set; }
     public bool CanPublish => Status == ProductStatus.PendingApproval &&
-        Inspections.Any(x => x.Id == LatestInspectionId && x.Approved) && !string.IsNullOrWhiteSpace(Sku);
+        Inspections.Any(x => x.Id == LatestInspectionId && x.Approved);
 
     private Product() { }
 
     public static Product Submit(string sellerId, string consignmentCode, string name, string brand, string category, string size,
         decimal originalPrice, decimal askingPrice, int condition, bool allowOffers, IReadOnlyCollection<ProductImage> images)
     {
-        if (string.IsNullOrWhiteSpace(sellerId) || string.IsNullOrWhiteSpace(consignmentCode)) throw new ArgumentException("Seller and consignment code are required.");
+        if (string.IsNullOrWhiteSpace(sellerId) || string.IsNullOrWhiteSpace(consignmentCode)) throw new ArgumentException("Cần có người bán và mã ký gửi.");
         ValidateDetails(name, brand, category, size, originalPrice, askingPrice, condition);
-        if (images.Count < 3) throw new ArgumentException("At least 3 images are required.");
+        if (images.Count < 3) throw new ArgumentException("Cần ít nhất 3 ảnh sản phẩm.");
         return new Product { SellerId = sellerId, ConsignmentCode = consignmentCode, Name = name.Trim(), Brand = brand.Trim(), Category = category.Trim(),
             Size = size.Trim(), OriginalPrice = originalPrice, AskingPrice = askingPrice, DeclaredCondition = condition,
             AllowOffers = allowOffers, Images = images.ToList() };
     }
 
     public Inspection RecordInspection(string inspectorId, bool passed, string name, string brand, string category, string size,
-        decimal originalPrice, decimal askingPrice, int condition, string notes, string? inventorySku,
+        decimal originalPrice, decimal askingPrice, int condition, string? notes,
         IReadOnlyCollection<ProductImage> inspectionImages, DateTime nowUtc)
     {
-        if (Status != ProductStatus.PendingApproval) throw new InvalidOperationException("Only pending products can be inspected.");
-        if (string.IsNullOrWhiteSpace(inspectorId) || inspectorId == SellerId) throw new UnauthorizedAccessException("An inspector cannot inspect their own listing.");
+        if (Status != ProductStatus.PendingApproval) throw new InvalidOperationException("Chỉ sản phẩm chờ duyệt mới được kiểm định.");
+        if (string.IsNullOrWhiteSpace(inspectorId) || inspectorId == SellerId) throw new UnauthorizedAccessException("Không được tự kiểm định sản phẩm của mình.");
         ValidateDetails(name, brand, category, size, originalPrice, askingPrice, condition);
-        if (string.IsNullOrWhiteSpace(notes) || notes.Trim().Length < 3 || notes.Length > 2000)
-            throw new ArgumentException("Inspection notes must be 3 to 2000 characters.");
-        if (inspectionImages.Count > 10) throw new ArgumentException("At most 10 inspection images are allowed.");
-        if (passed && (string.IsNullOrWhiteSpace(inventorySku) ||
-            !System.Text.RegularExpressions.Regex.IsMatch(inventorySku, @"^CC-\d{4}-\d{6}$")))
-            throw new ArgumentException("A passed inspection requires a valid inventory SKU.");
+        if (notes?.Trim().Length > 2000)
+            throw new ArgumentException("Ghi chú kiểm định không được vượt quá 2,000 ký tự.");
+        if (inspectionImages.Count > 10) throw new ArgumentException("Chỉ được tải tối đa 10 ảnh kiểm định.");
         if (passed)
         {
-            Sku = inventorySku!;
             Name = name.Trim(); Brand = brand.Trim(); Category = category.Trim(); Size = size.Trim();
             OriginalPrice = originalPrice; AskingPrice = askingPrice; VerifiedCondition = condition;
         }
         var inspection = new Inspection(Id, inspectorId, passed, name.Trim(), brand.Trim(), category.Trim(), size.Trim(),
-            originalPrice, askingPrice, condition, notes.Trim(), nowUtc);
+            originalPrice, askingPrice, condition, notes?.Trim() ?? string.Empty, nowUtc);
         foreach (var image in inspectionImages)
         {
             image.SetSortOrder(Images.Count);
@@ -104,11 +100,17 @@ public sealed class Product
         return inspection;
     }
 
-    public void Publish(DateTime nowUtc)
+    public void Publish(string sku, DateTime nowUtc)
     {
-        if (Status != ProductStatus.PendingApproval) throw new InvalidOperationException("Only pending products can be published.");
+        if (Status != ProductStatus.PendingApproval) throw new InvalidOperationException("Chỉ sản phẩm chờ duyệt mới được đăng bán.");
         if (!CanPublish)
-            throw new InvalidOperationException("A passed physical inspection and inventory SKU are required.");
+            throw new InvalidOperationException("Cần kiểm định hiện vật đạt yêu cầu trước khi đăng bán.");
+        if (string.IsNullOrWhiteSpace(Sku) && (string.IsNullOrWhiteSpace(sku) ||
+            !System.Text.RegularExpressions.Regex.IsMatch(sku, @"^CC-\d{4}-\d{6}$")))
+            throw new ArgumentException("Mã SKU sản phẩm không hợp lệ.", nameof(sku));
+        if (!string.IsNullOrWhiteSpace(Sku))
+            throw new InvalidOperationException("Sản phẩm đã có mã SKU chính thức.");
+        Sku = sku;
         Status = ProductStatus.Active; PublishedAtUtc = nowUtc;
     }
 
@@ -127,26 +129,26 @@ public sealed class Product
 
     public void Reject(string reason)
     {
-        if (Status != ProductStatus.PendingApproval) throw new InvalidOperationException("Only pending products can be rejected.");
-        if (Inspections.Count == 0) throw new InvalidOperationException("Inspect the physical item before rejecting it.");
+        if (Status != ProductStatus.PendingApproval) throw new InvalidOperationException("Chỉ sản phẩm chờ duyệt mới được từ chối.");
+        if (Inspections.Count == 0) throw new InvalidOperationException("Hãy kiểm định hiện vật trước khi từ chối.");
         if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length is < 5 or > 1000)
-            throw new ArgumentException("A rejection reason of 5 to 1000 characters is required.");
+            throw new ArgumentException("Lý do từ chối phải dài từ 5 đến 1,000 ký tự.");
         Status = ProductStatus.Rejected; RejectionReason = reason.Trim();
     }
 
     public void Reserve()
     {
-        if (Status != ProductStatus.Active) throw new InvalidOperationException("Only active products can be reserved.");
+        if (Status != ProductStatus.Active) throw new InvalidOperationException("Chỉ sản phẩm đang bán mới được giữ cho đơn hàng.");
         Status = ProductStatus.Reserved;
     }
     public void Restock()
     {
-        if (Status != ProductStatus.Reserved) throw new InvalidOperationException("Only reserved products can be restocked.");
+        if (Status != ProductStatus.Reserved) throw new InvalidOperationException("Chỉ sản phẩm đang được giữ mới được mở bán lại.");
         Status = ProductStatus.Active;
     }
     public void MarkSold()
     {
-        if (Status != ProductStatus.Reserved) throw new InvalidOperationException("Only reserved products can be sold.");
+        if (Status != ProductStatus.Reserved) throw new InvalidOperationException("Chỉ sản phẩm đang được giữ mới được đánh dấu đã bán.");
         Status = ProductStatus.Sold;
     }
 
@@ -156,11 +158,11 @@ public sealed class Product
             string.IsNullOrWhiteSpace(category) || string.IsNullOrWhiteSpace(size) ||
             name.Trim().Length is < 3 or > 200 || brand.Trim().Length is < 2 or > 100 ||
             category.Trim().Length is < 2 or > 80 || size.Trim().Length is < 1 or > 30)
-            throw new ArgumentException("Product name, brand, category and size are required.");
+            throw new ArgumentException("Cần nhập tên, thương hiệu, danh mục và kích cỡ sản phẩm.");
         if (asking <= 0 || original < asking || asking > 999_999_999_999_999_999m ||
             original > 999_999_999_999_999_999m || asking != decimal.Truncate(asking) ||
             original != decimal.Truncate(original) || condition is < 50 or > 100)
-            throw new ArgumentException("Prices or condition are invalid.");
+            throw new ArgumentException("Giá hoặc độ mới của sản phẩm không hợp lệ.");
     }
 }
 
@@ -197,12 +199,12 @@ public sealed class Inspection
     public List<ProductImage> Images { get; private set; } = [];
     private Inspection() { }
     public Inspection(Guid productId, string inspectorId, bool approved, string name, string brand, string category,
-        string size, decimal originalPrice, decimal askingPrice, int condition, string notes, DateTime nowUtc)
+        string size, decimal originalPrice, decimal askingPrice, int condition, string? notes, DateTime nowUtc)
     {
         ProductId = productId; InspectorId = inspectorId; Approved = approved;
         Name = name; Brand = brand; Category = category; Size = size;
         OriginalPrice = originalPrice; AskingPrice = askingPrice; VerifiedCondition = condition;
-        Notes = notes; CreatedAtUtc = nowUtc;
+        Notes = notes?.Trim() ?? string.Empty; CreatedAtUtc = nowUtc;
     }
 }
 
@@ -228,11 +230,11 @@ public sealed class Offer
     private Offer() { }
     public static Offer Create(Product product, string buyerId, decimal price, decimal minimumPrice, int usedBuyerOffers, DateTime nowUtc)
     {
-        if (product.Status != ProductStatus.Active || !product.AllowOffers) throw new InvalidOperationException("Offers are unavailable for this product.");
-        if (buyerId == product.SellerId) throw new UnauthorizedAccessException("Cannot offer on your own product.");
-        if (usedBuyerOffers >= 3) throw new InvalidOperationException("The buyer has used all 3 offers for this product.");
+        if (product.Status != ProductStatus.Active || !product.AllowOffers) throw new InvalidOperationException("Sản phẩm này không nhận đề xuất giá.");
+        if (buyerId == product.SellerId) throw new UnauthorizedAccessException("Không thể trả giá sản phẩm của chính mình.");
+        if (usedBuyerOffers >= 3) throw new InvalidOperationException("Bạn đã dùng hết 3 lượt trả giá cho sản phẩm này.");
         if (price < minimumPrice || price >= product.AskingPrice || price != decimal.Truncate(price))
-            throw new ArgumentOutOfRangeException(nameof(price), "Offer price is outside the allowed range.");
+            throw new ArgumentOutOfRangeException(nameof(price), "Giá đề xuất nằm ngoài khoảng cho phép.");
         var offer = new Offer { ProductId = product.Id, ProductSku = product.Sku, ProductName = product.Name,
             BuyerId = buyerId, SellerId = product.SellerId, AskingPrice = product.AskingPrice, CurrentPrice = price,
             LastBuyerPrice = price, Status = OfferStatus.PendingSeller, CreatedAtUtc = nowUtc, ExpiresAtUtc = nowUtc.AddHours(24) };
@@ -262,7 +264,7 @@ public sealed class Offer
             throw new InvalidOperationException("Không còn khoảng giá hợp lệ để đề xuất lại. Bạn có thể chấp nhận hoặc từ chối mức giá hiện tại.");
         if (price < range.Value.Minimum || price > range.Value.Maximum)
             throw new ArgumentOutOfRangeException(nameof(price),
-                $"Giá đề xuất lại phải từ {range.Value.Minimum:N0}đ đến {range.Value.Maximum:N0}đ.");
+                $"Giá đề xuất lại phải từ {range.Value.Minimum:N0} VNĐ đến {range.Value.Maximum:N0} VNĐ.");
         if (Status == OfferStatus.PendingSeller)
         {
             LastSellerPrice = price; Status = OfferStatus.PendingBuyer;
@@ -294,9 +296,9 @@ public sealed class Offer
     }
     public void UseForOrder(string buyerId, ProductStatus productStatus, DateTime nowUtc)
     {
-        if (buyerId != BuyerId) throw new UnauthorizedAccessException("The accepted price belongs to another buyer.");
+        if (buyerId != BuyerId) throw new UnauthorizedAccessException("Giá đã chấp nhận thuộc về người mua khác.");
         if (productStatus != ProductStatus.Active || Status != OfferStatus.Accepted || ExpiresAtUtc <= nowUtc || AcceptedPrice is null)
-            throw new InvalidOperationException("The accepted offer is unavailable or expired.");
+            throw new InvalidOperationException("Giá thỏa thuận không còn hiệu lực hoặc đã hết hạn.");
         Status = OfferStatus.Used;
         Events.Add(new OfferEvent(Id, buyerId, OfferEventAction.Ordered, AcceptedPrice, nowUtc));
     }
@@ -312,10 +314,10 @@ public sealed class Offer
     }
     private void EnsureAction(string actorId, ProductStatus productStatus, DateTime nowUtc)
     {
-        if (productStatus != ProductStatus.Active || ExpiresAtUtc <= nowUtc) throw new InvalidOperationException("Offer or product is no longer active.");
+        if (productStatus != ProductStatus.Active || ExpiresAtUtc <= nowUtc) throw new InvalidOperationException("Đề xuất giá hoặc sản phẩm không còn hiệu lực.");
         var expected = Status switch { OfferStatus.PendingSeller => SellerId, OfferStatus.PendingBuyer => BuyerId, _ => null };
-        if (expected is null) throw new InvalidOperationException("The offer is not awaiting a response.");
-        if (actorId != expected) throw new UnauthorizedAccessException("Only the receiving party can respond.");
+        if (expected is null) throw new InvalidOperationException("Đề xuất giá này không chờ phản hồi.");
+        if (actorId != expected) throw new UnauthorizedAccessException("Chỉ người nhận đề xuất mới được phản hồi.");
     }
 }
 public enum OfferEventAction { Submitted, SellerCountered, BuyerCountered, Accepted, Declined, Ordered, Expired }
@@ -351,6 +353,7 @@ public sealed class Order
     public string? DeliveryNote { get; private set; }
     public string? PickupAddress { get; private set; }
     public DateTime? PickupAtUtc { get; private set; }
+    public DateTime? PickupDeadlineAtUtc { get; private set; }
     public decimal ItemAmount { get; private set; }
     public decimal ShippingFee { get; private set; }
     public decimal TotalAmount { get; private set; }
@@ -373,37 +376,39 @@ public sealed class Order
         decimal shippingFee, int commissionPercent, DateTime nowUtc,
         DeliveryWindow? preferredDeliveryWindow = null, string? deliveryNote = null)
     {
-        if (idempotencyKey == Guid.Empty) throw new ArgumentException("An idempotency key is required.");
-        if (product.SellerId == buyerId) throw new UnauthorizedAccessException("Cannot buy your own product.");
-        if (product.Status != ProductStatus.Active) throw new InvalidOperationException("Product is no longer available.");
+        if (idempotencyKey == Guid.Empty) throw new ArgumentException("Thiếu mã xác nhận yêu cầu đặt hàng.");
+        if (product.SellerId == buyerId) throw new UnauthorizedAccessException("Không thể mua sản phẩm của chính mình.");
+        if (product.Status != ProductStatus.Active) throw new InvalidOperationException("Sản phẩm không còn mở bán.");
         if (offer is not null && (offer.BuyerId != buyerId || offer.ProductId != product.Id))
-            throw new UnauthorizedAccessException("The accepted price belongs to another buyer.");
+            throw new UnauthorizedAccessException("Giá đã chấp nhận thuộc về người mua khác.");
         if (offer is not null && (offer.Status != OfferStatus.Accepted || offer.ExpiresAtUtc <= nowUtc || offer.AcceptedPrice is null))
-            throw new InvalidOperationException("Accepted offer is unavailable for this buyer.");
+            throw new InvalidOperationException("Giá thỏa thuận không áp dụng cho người mua này.");
         if (string.IsNullOrWhiteSpace(recipientName) || recipientName.Trim().Length < 2 ||
             string.IsNullOrWhiteSpace(recipientPhone) || !System.Text.RegularExpressions.Regex.IsMatch(recipientPhone, @"^0[35789][0-9]{8}$"))
-            throw new ArgumentException("Recipient name or phone is invalid.");
+            throw new ArgumentException("Tên hoặc số điện thoại người nhận không hợp lệ.");
         if (fulfillment == FulfillmentType.Pickup)
         {
             if (preferredDeliveryWindow.HasValue || !string.IsNullOrWhiteSpace(deliveryNote))
-                throw new ArgumentException("Pickup cannot have delivery preferences.");
+                throw new ArgumentException("Nhận tại cửa hàng không dùng thông tin giao tận nơi.");
             if (pickupAtUtc is null || pickupAtUtc.Value.Kind != DateTimeKind.Utc || pickupAtUtc <= nowUtc ||
                 string.IsNullOrWhiteSpace(pickupAddress) || pickupAddress.Trim().Length > 300)
-                throw new ArgumentException("A future pickup time is required.");
-            if (shippingFee != 0) throw new ArgumentException("Pickup must be free.");
+                throw new ArgumentException("Cần chọn thời gian nhận hàng trong tương lai.");
+            if (shippingFee != 0) throw new ArgumentException("Nhận tại cửa hàng không tính phí giao hàng.");
+            if (offer is not null && pickupAtUtc >= offer.ExpiresAtUtc)
+                throw new ArgumentException("Đơn theo giá thỏa thuận phải được nhận trong 24 giờ từ lúc chấp nhận giá.");
         }
         else if (fulfillment == FulfillmentType.Shipping)
         {
             if (string.IsNullOrWhiteSpace(province) || string.IsNullOrWhiteSpace(ward) || string.IsNullOrWhiteSpace(streetAddress) ||
                 province.Trim().Length is < 2 or > 120 || ward.Trim().Length is < 2 or > 120 ||
                 streetAddress.Trim().Length is < 4 or > 300)
-                throw new ArgumentException("Province, ward and street address are required for delivery.");
+                throw new ArgumentException("Giao tận nơi cần tỉnh/thành, phường/xã và địa chỉ cụ thể.");
             if (shippingFee != ShippingFeeRules.InnerCity && shippingFee != ShippingFeeRules.OuterCity)
-                throw new ArgumentException("Invalid delivery fee.");
-            if (pickupAtUtc is not null) throw new ArgumentException("Pickup time is not used for delivery.");
+                throw new ArgumentException("Phí giao hàng không hợp lệ.");
+            if (pickupAtUtc is not null) throw new ArgumentException("Giao tận nơi không dùng giờ nhận tại cửa hàng.");
             if (preferredDeliveryWindow.HasValue && !Enum.IsDefined(preferredDeliveryWindow.Value))
-                throw new ArgumentException("Invalid delivery window.");
-            if (deliveryNote?.Length > 500) throw new ArgumentException("Delivery note is too long.");
+                throw new ArgumentException("Khung giờ giao hàng không hợp lệ.");
+            if (deliveryNote?.Length > 500) throw new ArgumentException("Ghi chú giao hàng quá dài.");
         }
         else throw new ArgumentOutOfRangeException(nameof(fulfillment));
         if (commissionPercent is < 15 or > 20) throw new ArgumentOutOfRangeException(nameof(commissionPercent));
@@ -418,6 +423,7 @@ public sealed class Order
             PreferredDeliveryWindow = fulfillment == FulfillmentType.Shipping ? preferredDeliveryWindow : null,
             DeliveryNote = fulfillment == FulfillmentType.Shipping ? deliveryNote?.Trim() : null,
             PickupAtUtc = fulfillment == FulfillmentType.Pickup ? pickupAtUtc : null,
+            PickupDeadlineAtUtc = fulfillment == FulfillmentType.Pickup ? offer?.ExpiresAtUtc : null,
             PickupAddress = fulfillment == FulfillmentType.Pickup ? pickupAddress!.Trim() : null,
             Fulfillment = fulfillment, ShippingFee = shippingFee, ItemAmount = item, CommissionAmount = commission,
             TotalAmount = item + shippingFee, Status = OrderStatus.PendingProcessing, CreatedAtUtc = nowUtc };
@@ -435,30 +441,38 @@ public sealed class Order
         DeliveryNote == (fulfillment == FulfillmentType.Shipping ? deliveryNote?.Trim() : null);
     public void MarkReady()
     {
-        if (Status != OrderStatus.PendingProcessing) throw new InvalidOperationException("Only new orders can be prepared.");
+        if (Status != OrderStatus.PendingProcessing) throw new InvalidOperationException("Chỉ đơn mới đang chờ xử lý mới được chuẩn bị.");
         Status = Fulfillment == FulfillmentType.Pickup ? OrderStatus.ReadyForPickup : OrderStatus.Shipping;
     }
     public void ConfirmPayment(string adminId, string reference, DateTime nowUtc)
     {
-        if (Status is OrderStatus.Cancelled or OrderStatus.Completed || PaymentStatus != PaymentStatus.Unpaid)
-            throw new InvalidOperationException("Payment cannot be confirmed for this order.");
+        if (Status is not (OrderStatus.ReadyForPickup or OrderStatus.Shipping) || PaymentStatus != PaymentStatus.Unpaid ||
+            PickupDeadlineAtUtc.HasValue && nowUtc >= PickupDeadlineAtUtc.Value)
+            throw new InvalidOperationException("Không thể xác nhận thanh toán cho đơn này.");
         if (string.IsNullOrWhiteSpace(adminId) || string.IsNullOrWhiteSpace(reference) ||
             reference.Trim().Length is < 4 or > 100)
-            throw new ArgumentException("A payment confirmation reference is required.");
+            throw new ArgumentException("Cần có mã đối soát thanh toán.");
         PaymentStatus = PaymentStatus.Paid; PaymentReference = reference.Trim(); PaymentConfirmedById = adminId; PaidAtUtc = nowUtc;
     }
     public void Complete(Product product, DateTime nowUtc)
     {
         if (ProductId != product.Id || product.Status != ProductStatus.Reserved ||
             Status is not (OrderStatus.ReadyForPickup or OrderStatus.Shipping) || PaymentStatus != PaymentStatus.Paid)
-            throw new InvalidOperationException("Order must be prepared and payment confirmed before completion.");
+            throw new InvalidOperationException("Cần chuẩn bị đơn và xác nhận thanh toán trước khi hoàn tất.");
         product.MarkSold(); Status = OrderStatus.Completed; CompletedAtUtc = nowUtc;
     }
     public void Cancel(Product product, bool isAdmin, DateTime nowUtc)
     {
         if (ProductId != product.Id || product.Status != ProductStatus.Reserved || PaymentStatus != PaymentStatus.Unpaid ||
             Status != OrderStatus.PendingProcessing && (!isAdmin || Status != OrderStatus.ReadyForPickup))
-            throw new InvalidOperationException("Only an unpaid order before dispatch can be cancelled.");
+            throw new InvalidOperationException("Chỉ đơn chưa thanh toán và chưa giao đi mới được hủy.");
+        product.Restock(); Status = OrderStatus.Cancelled; CancelledAtUtc = nowUtc;
+    }
+    public void ReturnUndelivered(Product product, DateTime nowUtc)
+    {
+        if (ProductId != product.Id || product.Status != ProductStatus.Reserved ||
+            Status != OrderStatus.Shipping || PaymentStatus != PaymentStatus.Unpaid)
+            throw new InvalidOperationException("Chỉ đơn chưa thanh toán, hàng đã trả về CoCo mới được mở bán lại.");
         product.Restock(); Status = OrderStatus.Cancelled; CancelledAtUtc = nowUtc;
     }
 }
@@ -489,7 +503,7 @@ public sealed class Wallet
     public void ReserveWithdrawal(decimal amount)
     {
         if (amount <= 0 || amount != decimal.Truncate(amount) || amount > Balance)
-            throw new ArgumentOutOfRangeException(nameof(amount), "Insufficient available wallet balance.");
+            throw new ArgumentOutOfRangeException(nameof(amount), "Số dư khả dụng không đủ.");
         Balance -= amount;
     }
 }
@@ -509,24 +523,46 @@ public sealed class WithdrawalRequest
     public Guid WalletId { get; set; }
     public decimal Amount { get; set; }
     public Guid RequestKey { get; set; }
+    // Retained for withdrawals created before full bank details were collected.
     public string BankAccountMasked { get; set; } = string.Empty;
+    public string? BankAccountNumber { get; set; }
+    public string? BankName { get; set; }
     public string Status { get; private set; } = "Pending";
     public DateTime CreatedAtUtc { get; set; }
     public string? DecidedById { get; private set; }
     public DateTime? DecidedAtUtc { get; private set; }
     public string? DecisionReason { get; private set; }
+    public string? TransferredById { get; private set; }
+    public DateTime? TransferredAtUtc { get; private set; }
+    public string? TransferReference { get; private set; }
+    public byte[] RowVersion { get; private set; } = [];
 
     public void Approve(string adminId, DateTime nowUtc)
     {
-        if (Status != "Pending") throw new InvalidOperationException("Withdrawal was already decided.");
+        if (Status != "Pending") throw new InvalidOperationException("Yêu cầu rút tiền đã được xử lý.");
+        if (string.IsNullOrWhiteSpace(BankAccountNumber) || string.IsNullOrWhiteSpace(BankName))
+            throw new InvalidOperationException("Yêu cầu cũ thiếu thông tin ngân hàng. Hãy từ chối để người bán gửi yêu cầu mới.");
         Status = "Approved"; DecidedById = adminId; DecidedAtUtc = nowUtc;
     }
     public void Reject(string adminId, string reason, DateTime nowUtc)
     {
-        if (Status != "Pending") throw new InvalidOperationException("Withdrawal was already decided.");
-        if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length < 3)
-            throw new ArgumentException("A rejection reason is required.");
+        if (Status is not ("Pending" or "Approved"))
+            throw new InvalidOperationException("Chỉ yêu cầu chưa chuyển tiền mới được từ chối.");
+        if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length is < 3 or > 1000)
+            throw new ArgumentException("Cần nhập lý do từ chối.");
         Status = "Rejected"; DecidedById = adminId; DecidedAtUtc = nowUtc; DecisionReason = reason.Trim();
+    }
+    public void ConfirmTransferred(string adminId, string reference, DateTime nowUtc)
+    {
+        if (Status != "Approved")
+            throw new InvalidOperationException("Chỉ yêu cầu đã duyệt mới được xác nhận đã chuyển tiền.");
+        if (string.IsNullOrWhiteSpace(BankAccountNumber) || string.IsNullOrWhiteSpace(BankName))
+            throw new InvalidOperationException("Yêu cầu cũ thiếu thông tin ngân hàng. Hãy từ chối để người bán gửi yêu cầu mới.");
+        if (string.IsNullOrWhiteSpace(adminId) || string.IsNullOrWhiteSpace(reference) ||
+            reference.Trim().Length is < 4 or > 100)
+            throw new ArgumentException("Mã giao dịch chuyển khoản phải dài từ 4 đến 100 ký tự.");
+        Status = "Transferred"; TransferredById = adminId; TransferredAtUtc = nowUtc;
+        TransferReference = reference.Trim();
     }
 }
 public sealed class MarketplaceNotification
@@ -535,6 +571,8 @@ public sealed class MarketplaceNotification
     public string UserId { get; set; } = string.Empty;
     public Guid? OfferId { get; set; }
     public Guid? OrderId { get; set; }
+    public Guid? ConversationId { get; set; }
+    public Guid? ProductId { get; set; }
     public string Category { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
     public bool IsRead { get; set; }

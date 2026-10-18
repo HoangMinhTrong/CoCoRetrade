@@ -67,7 +67,7 @@ public sealed class InspectionController(IAdminProductService products) : Contro
     [HttpPost, Authorize(Policy = StaffPermissions.Publish)]
     public Task<IActionResult> Publish(Guid id, ProductDecisionForm form, CancellationToken ct) =>
         Decide(id, () => products.PublishAsync(ActorId, id, form.ExpectedRowVersion,
-            form.ConfirmedSku, form.PhysicalItemConfirmed, ct), "Đã đăng bán sản phẩm.");
+            form.PhysicalItemConfirmed, ct), "Đã đăng bán sản phẩm.");
 
     [HttpPost, Authorize(Policy = StaffPermissions.Reject)]
     public Task<IActionResult> Reject(Guid id, ProductDecisionForm form, CancellationToken ct) =>

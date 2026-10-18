@@ -52,6 +52,7 @@ public sealed class PreviewController(IConfiguration configuration, IWebHostEnvi
             "M", 275_000, 0, 275_000, 41_250, DateTime.UtcNow.AddHours(21));
         ViewBag.Product = await products.VisibleDetailsAsync(ProductId, null, false, ct);
         ViewBag.Shipping = shipping;
+        ViewBag.Addresses = Array.Empty<AddressDto>();
         return View("~/Views/Checkout/Index.cshtml", new CheckoutForm { ProductId = ProductId, OfferId = OfferId,
             Fulfillment = FulfillmentType.Shipping });
     }

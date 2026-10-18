@@ -20,12 +20,12 @@ public sealed class ProductRulesTests
     {
         var product = Pending();
         product.RecordInspection("inspector-1", true, "Áo linen", "Zara", "Áo", "M", 500_000, 280_000,
-            90, "Đã kiểm tra", "CC-2026-000001", [], DateTime.UtcNow);
-        product.Publish(DateTime.UtcNow);
+            90, "Đã kiểm tra", [], DateTime.UtcNow);
+        product.Publish("CC-2026-000001", DateTime.UtcNow);
         Assert.Equal(ProductStatus.Active, product.Status);
         Assert.Equal(90, product.VerifiedCondition);
         Assert.Single(product.Inspections);
-        Assert.Throws<InvalidOperationException>(() => product.Publish(DateTime.UtcNow));
+        Assert.Throws<InvalidOperationException>(() => product.Publish("CC-2026-000002", DateTime.UtcNow));
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public sealed class ProductRulesTests
     {
         var product = Pending();
         product.RecordInspection("inspector-1", false, product.Name, product.Brand, product.Category,
-            product.Size, product.OriginalPrice, product.AskingPrice, 90, "Damaged fabric", null, [], DateTime.UtcNow);
+            product.Size, product.OriginalPrice, product.AskingPrice, 90, "Damaged fabric", [], DateTime.UtcNow);
         product.Reject("Damaged fabric");
         var service = new ProductService(new FakeRepository(product), new FakeImageStore(), Codes());
         Assert.Null(await service.VisibleImageAsync(product.Images[0].Id, "inspector-1", true, false, default));
@@ -59,8 +59,8 @@ public sealed class ProductRulesTests
     {
         var product = Pending();
         product.RecordInspection("inspector-1", true, "Áo linen", "Zara", "Áo", "M", 500_000, 300_000,
-            95, "Đạt kiểm định", "CC-2026-000001", [], DateTime.UtcNow);
-        product.Publish(DateTime.UtcNow);
+            95, "Đạt kiểm định", [], DateTime.UtcNow);
+        product.Publish("CC-2026-000001", DateTime.UtcNow);
         var service = new ProductService(new FakeRepository(product), new FakeImageStore(), Codes());
         Assert.Single(await service.ShopAsync(new ProductFilter(), default));
         Assert.NotNull(await service.VisibleDetailsAsync(product.Id, null, false, default));

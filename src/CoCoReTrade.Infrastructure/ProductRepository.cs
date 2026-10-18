@@ -25,7 +25,14 @@ public sealed class ProductRepository(AppDbContext db, ShippingPolicy shipping) 
             !string.Equals(f.Fulfillment, "pickup", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(f.Fulfillment, "shipping", StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Hình thức nhận hàng không hợp lệ.");
-        if (!string.IsNullOrWhiteSpace(f.Search)) { var s = f.Search.Trim(); q = q.Where(x => x.Name.Contains(s) || x.Brand.Contains(s) || x.Sku.Contains(s)); }
+        if (!string.IsNullOrWhiteSpace(f.Search))
+        {
+            var s = f.Search.Trim();
+            var skuSearch = s.ToUpperInvariant();
+            var compactCode = skuSearch.Replace("-", "").Replace(" ", "");
+            q = q.Where(x => x.Name.Contains(s) || x.Brand.Contains(s) ||
+                x.Sku.Replace("-", "").Replace(" ", "").ToUpper().Contains(compactCode));
+        }
         if (!string.IsNullOrWhiteSpace(f.Category)) q = q.Where(x => x.Category == f.Category);
         if (!string.IsNullOrWhiteSpace(f.Brand)) q = q.Where(x => x.Brand == f.Brand);
         if (!string.IsNullOrWhiteSpace(f.Size)) q = q.Where(x => x.Size == f.Size);
@@ -61,7 +68,9 @@ public sealed class ProductRepository(AppDbContext db, ShippingPolicy shipping) 
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.Trim();
-            q = q.Where(x => x.ConsignmentCode.Contains(s) || x.Sku.Contains(s) || x.Name.Contains(s) || db.Users.Any(u => u.Id == x.SellerId && u.FullName.Contains(s)));
+            var code = s.Replace("-", "").Replace(" ", "").ToUpperInvariant();
+            q = q.Where(x => x.ConsignmentCode.Replace("-", "").Replace(" ", "").ToUpper().Contains(code) ||
+                x.Name.Contains(s) || db.Users.Any(u => u.Id == x.SellerId && u.FullName.Contains(s)));
         }
         return await q.OrderBy(x => x.CreatedAtUtc).Take(100).ToListAsync(ct);
     }

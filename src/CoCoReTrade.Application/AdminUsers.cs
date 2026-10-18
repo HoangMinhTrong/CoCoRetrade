@@ -52,7 +52,7 @@ public sealed class AdminUserService(IAdminUserRepository repository, IStaffPerm
     public async Task<AdminUserRow> SetPublishGrantAsync(string actorId, string targetId, bool enabled, CancellationToken ct)
     {
         var target = await EnsureTarget(actorId, targetId, ct);
-        if (!target.IsInspector) throw new InvalidOperationException("Only inspectors can receive a publish grant.");
+        if (!target.IsInspector) throw new InvalidOperationException("Chỉ kiểm định viên mới được cấp quyền đăng bán.");
         await repository.SetPublishGrantAsync(targetId, enabled, actorId, clock.GetUtcNow().UtcDateTime, ct);
         return (await repository.FindAsync(targetId, ct))!;
     }
@@ -75,9 +75,9 @@ public sealed class AdminUserService(IAdminUserRepository repository, IStaffPerm
     private async Task<AdminUserRow> EnsureTarget(string actorId, string targetId, CancellationToken ct)
     {
         await permissions.EnsureAsync(actorId, StaffPermissions.ManageUsers, ct);
-        if (actorId == targetId) throw new InvalidOperationException("You cannot change your own staff access here.");
-        var target = await repository.FindAsync(targetId, ct) ?? throw new KeyNotFoundException("User not found.");
-        if (target.IsAdmin) throw new InvalidOperationException("Admin accounts cannot be changed here.");
+        if (actorId == targetId) throw new InvalidOperationException("Bạn không thể thay đổi quyền nhân viên của chính mình tại đây.");
+        var target = await repository.FindAsync(targetId, ct) ?? throw new KeyNotFoundException("Không tìm thấy người dùng.");
+        if (target.IsAdmin) throw new InvalidOperationException("Không thể thay đổi tài khoản quản trị tại đây.");
         return target;
     }
 }

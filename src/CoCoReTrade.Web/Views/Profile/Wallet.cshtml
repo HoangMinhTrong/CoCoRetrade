@@ -1,7 +1,48 @@
 @model WalletBalanceDto
-@{ ViewData["Title"] = "Ví ký gửi CoCo"; var requests = (IReadOnlyList<WithdrawalDto>)ViewBag.Withdrawals; }
-<div class="eyebrow mt-4">Tiền bán hàng</div><h1 class="page-title mt-1">Ví ký gửi CoCo</h1>
-<p class="subtitle">CoCo ghi có sau khi đơn hoàn tất, đã thanh toán và Admin đối soát. Tiền hàng đã trừ hoa hồng; phí vận chuyển không tính vào hoa hồng.</p>
-<div class="row g-3 mb-4"><div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Khả dụng</div><strong class="fs-3">@Model.Available.ToString("N0")đ</strong></div></div><div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Chờ đối soát</div><strong class="fs-3">@Model.PendingSellerProceeds.ToString("N0")đ</strong></div></div><div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Chờ xử lý rút</div><strong class="fs-3">@Model.PendingWithdrawal.ToString("N0")đ</strong></div></div><div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Đã chuyển khoản xác nhận</div><strong class="fs-3">@Model.Withdrawn.ToString("N0")đ</strong></div></div></div>
-<div class="row g-4 mb-5"><div class="col-lg-6"><form asp-action="Withdraw" method="post" class="panel"><h2 class="display-serif fs-4">Yêu cầu rút tiền</h2><p class="form-text">Chỉ ghi nhận yêu cầu và chờ Admin duyệt. Ứng dụng chưa kết nối ngân hàng.</p><input type="hidden" name="RequestKey" value="@Guid.NewGuid()" /><label for="amount" class="form-label">Số tiền rút (VNĐ)</label><input id="amount" name="Amount" type="number" min="1" max="@Model.Available" step="1" required class="form-control mb-3" /><label for="bank" class="form-label">Tài khoản nhận đã che số</label><input id="bank" name="BankAccountMasked" placeholder="Ví dụ: ****1234" maxlength="60" required class="form-control" /><button type="submit" class="btn btn-wine mt-3" disabled="@(Model.Available <= 0)">Gửi yêu cầu</button></form></div>
-<div class="col-lg-6"><div class="panel"><h2 class="display-serif fs-4">Lịch sử yêu cầu</h2>@if (requests.Count == 0) { <p>Chưa có yêu cầu rút tiền.</p> } else { @foreach (var request in requests) { <div class="border-top py-2"><strong>@request.Amount.ToString("N0")đ</strong> · @request.Status <div class="small text-muted">@request.BankAccountMasked · @request.CreatedAtUtc.ToString("dd/MM/yyyy HH:mm") UTC</div>@if (!string.IsNullOrEmpty(request.DecisionReason)) { <div class="small">@request.DecisionReason</div> }</div> } }</div></div></div>
+@{
+    ViewData["Title"] = "Ví ký gửi CoCo";
+    var requests = (IReadOnlyList<WithdrawalDto>)ViewBag.Withdrawals;
+}
+<div class="eyebrow mt-4">Tiền bán hàng</div>
+<h1 class="page-title mt-1">Ví ký gửi CoCo</h1>
+<p class="subtitle">Số dư khả dụng chỉ tăng khi khách đã nhận hàng, CoCo đã thu tiền và nhân viên hoàn tất đơn. Đặt đơn hoặc chỉ xác nhận thanh toán chưa ghi có ví. Hoa hồng tính trên tiền hàng, không gồm phí vận chuyển.</p>
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Khả dụng</div><strong class="fs-3">@Model.Available.ToString("N0") VNĐ</strong></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Đơn cũ chờ đối soát</div><strong class="fs-3">@Model.PendingSellerProceeds.ToString("N0") VNĐ</strong></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Đang chờ rút</div><strong class="fs-3">@Model.PendingWithdrawal.ToString("N0") VNĐ</strong></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Đã xác nhận chuyển khoản</div><strong class="fs-3">@Model.Withdrawn.ToString("N0") VNĐ</strong></div></div>
+</div>
+<div class="row g-4 mb-5">
+    <div class="col-lg-6">
+        <form asp-action="Withdraw" method="post" class="panel">
+            <h2 class="display-serif fs-4">Yêu cầu rút tiền</h2>
+            <p class="form-text">Nhập đầy đủ số tài khoản và tên ngân hàng. CoCo duyệt yêu cầu rồi chuyển tiền thủ công; trạng thái “Đã chuyển” chỉ xuất hiện sau khi nhân viên xác nhận giao dịch thực tế.</p>
+            <input type="hidden" name="RequestKey" value="@Guid.NewGuid()" />
+            <label for="amount" class="form-label">Số tiền rút (VNĐ)</label>
+            <input id="amount" name="Amount" type="number" min="1" max="@Model.Available" step="1" required class="form-control mb-3" />
+            <label for="bankAccountNumber" class="form-label">Số tài khoản ngân hàng</label>
+            <input id="bankAccountNumber" name="BankAccountNumber" type="text" inputmode="numeric" pattern="[0-9]{6,30}" minlength="6" maxlength="30" autocomplete="off" required class="form-control mb-3" placeholder="Nhập đầy đủ số tài khoản" />
+            <label for="bankName" class="form-label">Tên ngân hàng</label>
+            <input id="bankName" name="BankName" type="text" minlength="2" maxlength="100" autocomplete="off" required class="form-control" placeholder="Ví dụ: Vietcombank" />
+            <button type="submit" class="btn btn-wine mt-3" disabled="@(Model.Available <= 0)">Gửi yêu cầu</button>
+        </form>
+    </div>
+    <div class="col-lg-6">
+        <div class="panel">
+            <h2 class="display-serif fs-4">Lịch sử yêu cầu</h2>
+            @if (requests.Count == 0) { <p>Chưa có yêu cầu rút tiền.</p> }
+            else
+            {
+                @foreach (var request in requests)
+                {
+                    <div class="border-top py-2">
+                        <strong>@request.Amount.ToString("N0") VNĐ</strong> · @(request.Status == "Transferred" ? "Đã chuyển" : request.Status == "Approved" ? "Đã duyệt, chờ chuyển" : request.Status == "Rejected" ? "Từ chối" : "Chờ duyệt")
+                        <div class="small text-muted">@(request.BankName ?? "Ngân hàng chưa lưu") · @request.BankAccountNumber · @request.CreatedAtUtc.ToString("dd/MM/yyyy HH:mm") UTC</div>
+                        @if (request.TransferredAtUtc.HasValue) { <div class="small">Đã chuyển @request.TransferredAtUtc.Value.ToString("dd/MM/yyyy HH:mm") UTC · Mã giao dịch @request.TransferReference</div> }
+                        @if (!string.IsNullOrEmpty(request.DecisionReason)) { <div class="small">@request.DecisionReason</div> }
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>

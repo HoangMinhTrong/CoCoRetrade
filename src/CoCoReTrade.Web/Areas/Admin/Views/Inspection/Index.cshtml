@@ -1,29 +1,29 @@
 @model IReadOnlyList<AdminProductItem>
 @{ ViewData["Title"] = "Ký gửi chờ kiểm định"; }
-<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mt-4 mb-3">
-    <div><div class="eyebrow">CoCo ReTrade</div><h1 class="page-title mt-1 mb-0">Ký gửi chờ duyệt</h1></div>
-    <a class="btn btn-outline-wine" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Tổng quan</a>
-</div>
-<p class="subtitle">Kiểm tra hiện vật và ghi kết quả. Bài chỉ lên sàn sau khi người có quyền Publish xác nhận.</p>
-<form method="get" class="panel mb-4 d-flex flex-column flex-sm-row gap-2">
-    <input class="form-control" type="search" name="search" value="@ViewBag.Search" placeholder="Mã ký gửi, SKU, tên món hoặc người bán" aria-label="Tìm ký gửi" />
-    <button class="btn btn-wine" type="submit">Tìm kiếm</button>
+<header class="admin-page-header">
+    <div><div class="eyebrow">Kiểm định CoCo</div><h1 class="page-title">Ký gửi chờ duyệt</h1><p class="subtitle mb-0">Kiểm tra hiện vật, hoàn thiện thông tin và xác nhận trước khi đăng bán.</p></div>
+    <span class="admin-status admin-status--warning">@Model.Count sản phẩm trong danh sách</span>
+</header>
+<form method="get" class="panel admin-toolbar mb-4">
+    <div class="flex-grow-1"><label class="form-label" for="inspectionSearch">Tìm sản phẩm ký gửi</label><input class="form-control" id="inspectionSearch" type="search" name="search" value="@ViewBag.Search" placeholder="Nhập mã chờ duyệt, tên sản phẩm hoặc người bán" /></div>
+    <button class="btn btn-wine" type="submit"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#search" /></svg> Tìm kiếm</button>
+    @if (!string.IsNullOrWhiteSpace((string?)ViewBag.Search)) { <a class="btn btn-outline-wine" asp-action="Index">Xóa tìm kiếm</a> }
 </form>
 @if (Model.Count == 0)
 {
-    <div class="empty-state"><h2 class="display-serif fs-4">Không có món chờ duyệt</h2><p>Danh sách sẽ cập nhật khi có đơn ký gửi mới.</p></div>
+    <div class="empty-state"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#clipboard" /></svg><h2 class="fs-4 mt-3">Không có sản phẩm phù hợp</h2><p class="mb-0">Thử tìm bằng mã khác, hoặc quay lại khi có ký gửi mới.</p></div>
 }
 else
 {
     <div class="row g-3 mb-5">
     @foreach (var p in Model)
     {
-        <div class="col-12 col-md-6 col-xl-4"><article class="panel h-100">
-            <div class="eyebrow">@p.ConsignmentCode</div>
-            <h2 class="fs-5 mt-2">@p.Name</h2>
-            <div class="text-muted small mb-2">@p.Brand · @p.SellerName</div>
-            @if (!string.IsNullOrEmpty(p.Sku)) { <div class="small">SKU: <strong>@p.Sku</strong></div> }
-            <div class="mt-3"><a class="btn btn-wine btn-sm" asp-action="Review" asp-route-id="@p.Id">Mở phiếu kiểm định</a></div>
+        <div class="col-12 col-md-6 col-xl-4"><article class="panel admin-record-card h-100 d-flex flex-column">
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-3"><span class="admin-code">@p.ConsignmentCode</span><span class="admin-status admin-status--warning">Chờ duyệt</span></div>
+            <h2 class="fs-5">@p.Name</h2><div class="text-muted small mb-3">@p.Brand</div>
+            <div class="spec-row"><span>Người ký gửi</span><strong>@p.SellerName</strong></div>
+            <div class="spec-row mb-3"><span>Ngày gửi</span><strong>@p.CreatedAtUtc.AddHours(7).ToString("dd/MM/yyyy")</strong></div>
+            <a class="btn btn-outline-wine w-100 mt-auto" asp-action="Review" asp-route-id="@p.Id">Mở phiếu kiểm định <span aria-hidden="true">→</span></a>
         </article></div>
     }
     </div>

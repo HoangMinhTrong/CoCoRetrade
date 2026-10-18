@@ -18,11 +18,11 @@ public sealed class WalletWithdrawalRepository(AppDbContext db) : IWalletWithdra
             return result;
         }
         catch (DbUpdateConcurrencyException ex)
-        { throw new InvalidOperationException("Wallet changed concurrently. Reload and retry.", ex); }
+        { throw new InvalidOperationException("Ví đã thay đổi. Hãy tải lại trang và thử lại.", ex); }
         catch (DbUpdateException ex) when (ex.InnerException is SqlException sql && sql.Number is 2601 or 2627)
-        { throw new InvalidOperationException("Withdrawal request was already recorded.", ex); }
+        { throw new InvalidOperationException("Yêu cầu rút tiền này đã được ghi nhận.", ex); }
         catch (SqlException ex) when (ex.Number == 1205)
-        { throw new InvalidOperationException("Concurrent wallet update. Retry the request.", ex); }
+        { throw new InvalidOperationException("Ví vừa được cập nhật. Hãy thử gửi lại yêu cầu.", ex); }
     }
     public Task<Wallet?> WalletForUserAsync(string userId, CancellationToken ct) =>
         db.Wallets.FirstOrDefaultAsync(x => x.UserId == userId, ct);
@@ -44,8 +44,8 @@ public sealed class WalletWithdrawalRepository(AppDbContext db) : IWalletWithdra
         var reserved = await db.WithdrawalRequests.AsNoTracking()
             .Where(x => x.WalletId == wallet.Id && (x.Status == "Pending" || x.Status == "Approved"))
             .SumAsync(x => (decimal?)x.Amount, ct) ?? 0;
-        var withdrawn = await db.WalletTransactions.AsNoTracking()
-            .Where(x => x.WalletId == wallet.Id && x.Type == "WithdrawalSettled")
+        var withdrawn = await db.WithdrawalRequests.AsNoTracking()
+            .Where(x => x.WalletId == wallet.Id && x.Status == "Transferred")
             .SumAsync(x => (decimal?)x.Amount, ct) ?? 0;
         return new WalletBalanceDto(pendingSeller, wallet.Balance, reserved, withdrawn);
     }

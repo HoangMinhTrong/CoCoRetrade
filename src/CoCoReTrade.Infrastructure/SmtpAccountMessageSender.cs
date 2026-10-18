@@ -20,11 +20,11 @@ public sealed class SmtpAccountMessageSender(IConfiguration configuration, IHost
     {
         if (environment.IsDevelopment())
         {
-            logger.LogInformation("Development account message for {Email}: {Body}", email, body);
+            logger.LogInformation("Thông báo tài khoản trong môi trường phát triển gửi tới {Email}: {Body}", email, body);
             return;
         }
-        var host = configuration["Smtp:Host"] ?? throw new InvalidOperationException("SMTP host is required.");
-        var from = configuration["Smtp:From"] ?? throw new InvalidOperationException("SMTP sender is required.");
+        var host = configuration["Smtp:Host"] ?? throw new InvalidOperationException("Cần cấu hình máy chủ SMTP.");
+        var from = configuration["Smtp:From"] ?? throw new InvalidOperationException("Cần cấu hình địa chỉ gửi SMTP.");
         using var client = new SmtpClient(host, int.TryParse(configuration["Smtp:Port"], out var port) ? port : 587)
         {
             EnableSsl = true,

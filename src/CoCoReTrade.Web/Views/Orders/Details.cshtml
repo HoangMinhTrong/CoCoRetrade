@@ -5,23 +5,26 @@
 <div class="mt-4"><a asp-action="Index">← Đơn hàng của tôi</a></div>
 <div class="row g-4 mt-1 mb-5"><div class="col-lg-7"><div class="panel">
     <div class="eyebrow">@Model.ProductSku</div><h1 class="page-title mt-2">@Model.ProductName</h1>
-    <p><span class="status-pill">@Model.Status</span> <span class="status-pill">Thanh toán: @Model.PaymentStatus</span></p>
-    <div class="spec-row"><span>Kích cỡ</span><strong>@Model.ProductSize</strong></div>
+    <p><span class="status-pill">@(Model.Status == OrderStatus.Completed ? Model.Fulfillment == FulfillmentType.Shipping ? "Giao hàng thành công" : "Đã nhận tại CoCo" : UiText.For(Model.Status))</span> <span class="status-pill">Thanh toán: @UiText.For(Model.PaymentStatus)</span></p>
+    <div class="spec-row"><span>Kích cỡ</span><strong>@UiText.For(Model.ProductSize)</strong></div>
     @if (me == Model.SellerId && me != Model.BuyerId && !User.IsInRole("Admin"))
     { <div class="alert alert-light border">CoCo phụ trách giao nhận. Thông tin liên hệ của người mua được giữ riêng tư.</div> }
     else
     {
         <div class="spec-row"><span>Người nhận</span><strong>@Model.RecipientName · @Model.RecipientPhone</strong></div>
-        @if (Model.Fulfillment == FulfillmentType.Pickup) { <div class="spec-row"><span>Giờ lấy tại CoCo</span><strong>@pickupAtStore</strong></div><div class="spec-row"><span>Địa chỉ CoCo khi đặt</span><strong>@Model.PickupAddress</strong></div> }
+        @if (Model.Fulfillment == FulfillmentType.Pickup) { <div class="spec-row"><span>Giờ lấy tại CoCo</span><strong>@pickupAtStore</strong></div><div class="spec-row"><span>Địa chỉ CoCo khi đặt</span><strong>@Model.PickupAddress</strong></div>
+            @if (Model.PickupDeadlineAtUtc.HasValue) { <div class="alert alert-warning mt-3">Giá thỏa thuận áp dụng khi bạn đến nhận trước @(new DateTimeOffset(Model.PickupDeadlineAtUtc.Value, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(Shipping.StoreUtcOffsetHours)).ToString("dd/MM/yyyy HH:mm")) (giờ CoCo). Quá hạn chưa nhận và chưa thanh toán, đơn sẽ hủy và món đồ mở bán lại theo giá niêm yết.</div> }
+        }
         else { <div class="spec-row"><span>Giao tới</span><strong>@Model.StreetAddress, @Model.Ward, @Model.Province</strong></div>
             @if (Model.PreferredDeliveryWindow.HasValue) { <div class="spec-row"><span>Khung giờ thuận tiện</span><strong>@Model.PreferredDeliveryWindow</strong></div> }
             @if (!string.IsNullOrWhiteSpace(Model.DeliveryNote)) { <div class="spec-row"><span>Ghi chú giao hàng</span><strong>@Model.DeliveryNote</strong></div> }
         }
     }
-    <div class="spec-row"><span>Tiền hàng</span><strong>@Model.MerchandisePrice.ToString("N0")đ</strong></div>
-    <div class="spec-row"><span>Phí giao</span><strong>@Model.ShippingFee.ToString("N0")đ</strong></div>
-    <div class="spec-row fs-5"><span>Tổng thanh toán</span><strong>@Model.TotalAmount.ToString("N0")đ</strong></div>
-    <p class="small text-muted mt-3 mb-0">Đơn mới đang chờ CoCo xử lý. Trạng thái thanh toán được xác nhận riêng sau khi CoCo nhận tiền.</p>
+    <div class="spec-row"><span>Tiền hàng</span><strong>@Model.MerchandisePrice.ToString("N0") VNĐ</strong></div>
+    <div class="spec-row"><span>Phí giao</span><strong>@Model.ShippingFee.ToString("N0") VNĐ</strong></div>
+    <div class="spec-row fs-5"><span>Tổng thanh toán</span><strong>@Model.TotalAmount.ToString("N0") VNĐ</strong></div>
+    <div class="spec-row"><span>Phương thức thanh toán</span><strong>Tiền mặt khi nhận hàng</strong></div>
+    <p class="small text-muted mt-3 mb-0">@(Model.Fulfillment == FulfillmentType.Shipping ? "Kiểm tra hàng khi người giao hàng đến; nếu nhận hàng, trả tiền mặt cho người giao hàng." : "Kiểm tra hàng và trả tiền mặt tại CoCo khi tới lấy.") Không cần chuyển khoản trước. CoCo cập nhật trạng thái thanh toán sau khi xác nhận đã thu tiền.</p>
 </div></div><div class="col-lg-5"><div class="panel"><h2 class="display-serif fs-4">Theo dõi</h2>
     <p>Ngày đặt: @Model.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
     @if (me == Model.BuyerId && Model.Status == OrderStatus.PendingProcessing && Model.PaymentStatus == PaymentStatus.Unpaid)

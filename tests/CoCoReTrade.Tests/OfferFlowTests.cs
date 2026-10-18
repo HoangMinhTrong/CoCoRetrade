@@ -15,7 +15,7 @@ public sealed class OfferFlowTests
         var product = Product.Submit(Seller, "CC-2026-000100", "Áo khoác denim", "Zara", "Áo", "M",
             500_000, 300_000, 95, allowOffers,
             [new ProductImage("a.jpg", "image/jpeg", 0), new ProductImage("b.jpg", "image/jpeg", 1), new ProductImage("c.jpg", "image/jpeg", 2)]);
-        if (active) { product.RecordInspection("inspector-1", true, product.Name, product.Brand, product.Category, product.Size, product.OriginalPrice, product.AskingPrice, 95, "Physical item checked", "CC-2026-000100", [], Start.UtcDateTime); product.Publish(Start.UtcDateTime); }
+        if (active) { product.RecordInspection("inspector-1", true, product.Name, product.Brand, product.Category, product.Size, product.OriginalPrice, product.AskingPrice, 95, "Physical item checked", [], Start.UtcDateTime); product.Publish("CC-2026-000100", Start.UtcDateTime); }
         var store = new MemoryStore(product);
         var clock = new ManualClock(Start);
         var policy = new MarketplacePolicy(25, 15);

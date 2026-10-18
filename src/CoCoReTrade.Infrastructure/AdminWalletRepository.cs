@@ -26,18 +26,24 @@ public sealed class AdminWalletRepository(AppDbContext db) : IAdminWalletReposit
         if (wallet is null) return null;
         var transactions = await db.WalletTransactions.AsNoTracking().Where(x => x.WalletId == id)
             .OrderByDescending(x => x.CreatedAtUtc).Take(200)
-            .Select(x => new AdminWalletTransaction(x.Id, x.OrderId, x.Amount, x.Type, x.CreatedAtUtc)).ToListAsync(ct);
+            .Select(x => new AdminWalletTransaction(x.Id, x.OrderId, x.Amount, x.Type,
+                x.CreatedAtUtc, x.WithdrawalRequestId)).ToListAsync(ct);
         var withdrawals = await db.WithdrawalRequests.AsNoTracking().Where(x => x.WalletId == id)
             .Select(x => new AdminWithdrawalRow(x.Id, x.WalletId, wallet.OwnerName, x.Amount,
-                x.BankAccountMasked, x.Status)).ToListAsync(ct);
+                x.BankAccountNumber ?? x.BankAccountMasked, x.Status, x.BankName,
+                x.TransferredAtUtc, x.TransferReference)).ToListAsync(ct);
         return new AdminWalletDetails(wallet, transactions, withdrawals);
     }
     public async Task<IReadOnlyList<AdminWithdrawalRow>> WithdrawalsAsync(CancellationToken ct) =>
         await (from request in db.WithdrawalRequests.AsNoTracking()
                join wallet in db.Wallets.AsNoTracking() on request.WalletId equals wallet.Id
                join owner in db.Users.AsNoTracking() on wallet.UserId equals owner.Id
+               orderby request.Status == "Pending" ? 0 : request.Status == "Approved" ? 1 : 2,
+                   request.CreatedAtUtc descending
                select new AdminWithdrawalRow(request.Id, wallet.Id, owner.FullName, request.Amount,
-                   request.BankAccountMasked, request.Status)).Take(200).ToListAsync(ct);
+                   request.BankAccountNumber ?? request.BankAccountMasked, request.Status,
+                   request.BankName, request.TransferredAtUtc, request.TransferReference))
+            .Take(200).ToListAsync(ct);
 
     public async Task<IReadOnlyList<SellerPayoutCandidate>> PayoutCandidatesAsync(CancellationToken ct) =>
         await (from order in db.Orders.AsNoTracking()
@@ -61,11 +67,11 @@ public sealed class AdminWalletRepository(AppDbContext db) : IAdminWalletReposit
             await transaction.CommitAsync(ct);
             return result;
         }
-        catch (DbUpdateConcurrencyException ex) { throw new InvalidOperationException("Wallet changed concurrently. Reload and retry.", ex); }
+        catch (DbUpdateConcurrencyException ex) { throw new InvalidOperationException("Ví đã thay đổi. Hãy tải lại trang và thử lại.", ex); }
         catch (DbUpdateException ex) when (ex.InnerException is SqlException sql && sql.Number is 2601 or 2627)
-        { throw new InvalidOperationException("Seller proceeds were already released for this order.", ex); }
+        { throw new InvalidOperationException("Tiền bán hàng của đơn này đã được ghi có.", ex); }
         catch (SqlException ex) when (ex.Number == 1205)
-        { throw new InvalidOperationException("Concurrent wallet update. Reload and retry.", ex); }
+        { throw new InvalidOperationException("Ví vừa được cập nhật. Hãy tải lại trang và thử lại.", ex); }
     }
     public void AddWallet(Wallet wallet) => db.Wallets.Add(wallet);
     public void AddTransaction(WalletTransaction transaction) => db.WalletTransactions.Add(transaction);

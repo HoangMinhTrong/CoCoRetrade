@@ -16,7 +16,7 @@ public sealed class SignalRSupportRealtimePublisher(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Could not broadcast support ticket {TicketId} change", ticketId);
+            logger.LogWarning(ex, "Không thể phát thay đổi của yêu cầu hỗ trợ {TicketId}", ticketId);
         }
     }
 }

@@ -2,18 +2,19 @@
 @{ ViewData["Title"] = Model.Product.ConsignmentCode; }
 <div class="mt-4"><a asp-area="Admin" asp-controller="Products" asp-action="Index">← Danh sách sản phẩm</a></div>
 <div class="eyebrow mt-3">@Model.Product.ConsignmentCode</div><h1 class="page-title mt-1">@Model.Product.Name</h1>
-<p class="subtitle">@Model.SellerName · @Model.Product.Status</p>
+<p class="subtitle">@Model.SellerName · @UiText.For(Model.Product.Status)</p>
 <div class="row g-3 mb-5"><div class="col-lg-5"><div class="panel"><div class="row row-cols-2 g-2">
 @foreach (var image in Model.Product.ImageIds)
 { <div class="col"><img class="w-100 rounded" style="aspect-ratio:4/5;object-fit:cover" src="/images/@image" alt="Ảnh sản phẩm" /></div> }
 </div></div></div><div class="col-lg-7"><div class="panel">
-<div class="spec-row"><span>SKU</span><strong>@(string.IsNullOrEmpty(Model.Product.Sku) ? "Chưa cấp" : Model.Product.Sku)</strong></div>
+<div class="spec-row"><span>Mã chờ duyệt</span><strong>@Model.Product.ConsignmentCode</strong></div>
+@if (!string.IsNullOrEmpty(Model.Product.Sku)) { <div class="spec-row"><span>SKU chính thức</span><strong>@Model.Product.Sku</strong></div> }
 <div class="spec-row"><span>Thương hiệu</span><strong>@Model.Product.Brand</strong></div>
-<div class="spec-row"><span>Size</span><strong>@Model.Product.Size</strong></div>
-<div class="spec-row"><span>Giá bán</span><strong>@Model.Product.AskingPrice.ToString("N0") đ</strong></div>
+<div class="spec-row"><span>Kích cỡ</span><strong>@UiText.For(Model.Product.Size)</strong></div>
+<div class="spec-row"><span>Giá bán</span><strong>@Model.Product.AskingPrice.ToString("N0") VNĐ</strong></div>
 <div class="spec-row"><span>Tình trạng</span><strong>@(Model.Product.VerifiedCondition ?? Model.Product.DeclaredCondition)%</strong></div>
 @if (!string.IsNullOrEmpty(Model.Product.RejectionReason)) { <p class="alert alert-danger mt-3">@Model.Product.RejectionReason</p> }
-@if (!string.IsNullOrEmpty(Model.Product.Sku)) { <a class="btn btn-outline-wine mt-3" asp-action="Label" asp-route-id="@Model.Product.Id" target="_blank">In tem SKU</a> }
+@if (!string.IsNullOrEmpty(Model.Product.Sku)) { <a class="btn btn-outline-wine mt-3" asp-action="Label" asp-route-id="@Model.Product.Id" target="_blank">In tem mã sản phẩm</a> }
 </div><div class="panel mt-3"><h2 class="display-serif fs-4">Kiểm định</h2>
 @foreach (var item in Model.Inspections)
 { <div class="border-top py-3"><strong>@(item.Passed ? "Đạt" : "Không đạt") · @item.VerifiedCondition%</strong><span class="small text-muted ms-2">@item.CreatedAtUtc.ToString("dd/MM/yyyy HH:mm") UTC</span><p class="mb-0 mt-1">@item.Notes</p></div> }

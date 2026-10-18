@@ -6,15 +6,15 @@ namespace CoCoReTrade.Web.Models;
 public sealed class AddressForm
 {
     public Guid? Id { get; set; }
-    [Required, MinLength(2), MaxLength(150), Display(Name = "Người nhận")]
+    [Required(ErrorMessage = "Vui lòng nhập trường này."), MinLength(2, ErrorMessage = "Cần ít nhất {1} ký tự."), MaxLength(150, ErrorMessage = "Tối đa {1} ký tự."), Display(Name = "Người nhận")]
     public string RecipientName { get; set; } = "";
-    [Required, RegularExpression(@"^0[35789][0-9]{8}$"), Display(Name = "Số điện thoại")]
+    [Required(ErrorMessage = "Vui lòng nhập trường này."), RegularExpression(@"^0[35789][0-9]{8}$", ErrorMessage = "Nhập số di động Việt Nam gồm 10 chữ số."), Display(Name = "Số điện thoại")]
     public string RecipientPhone { get; set; } = "";
-    [Required, MinLength(2), MaxLength(120), Display(Name = "Tỉnh / thành phố")]
+    [Required(ErrorMessage = "Vui lòng nhập trường này."), MinLength(2, ErrorMessage = "Cần ít nhất {1} ký tự."), MaxLength(120, ErrorMessage = "Tối đa {1} ký tự."), Display(Name = "Tỉnh / thành phố")]
     public string Province { get; set; } = "";
-    [Required, MinLength(2), MaxLength(120), Display(Name = "Phường / xã")]
+    [Required(ErrorMessage = "Vui lòng nhập trường này."), MinLength(2, ErrorMessage = "Cần ít nhất {1} ký tự."), MaxLength(120, ErrorMessage = "Tối đa {1} ký tự."), Display(Name = "Phường / xã")]
     public string Ward { get; set; } = "";
-    [Required, MinLength(4), MaxLength(300), Display(Name = "Số nhà, đường")]
+    [Required(ErrorMessage = "Vui lòng nhập trường này."), MinLength(4, ErrorMessage = "Cần ít nhất {1} ký tự."), MaxLength(300, ErrorMessage = "Tối đa {1} ký tự."), Display(Name = "Số nhà, đường")]
     public string StreetAddress { get; set; } = "";
     public AddressInput ToInput() => new(Id, RecipientName, RecipientPhone, Province, Ward, StreetAddress);
 }
@@ -22,8 +22,11 @@ public sealed class AddressForm
 public sealed class WithdrawalForm
 {
     public Guid RequestKey { get; set; } = Guid.NewGuid();
-    [Range(1, 999999999999999999d), Display(Name = "Số tiền rút (VNĐ)")]
+    [Range(1, 999999999999999999d, ErrorMessage = "Số tiền rút phải lớn hơn 0."), Display(Name = "Số tiền rút (VNĐ)")]
     public decimal Amount { get; set; }
-    [Required, MaxLength(60), Display(Name = "Tài khoản nhận đã che số")]
-    public string BankAccountMasked { get; set; } = "";
+    [Required(ErrorMessage = "Vui lòng nhập trường này."), RegularExpression(@"^[0-9]{6,30}$", ErrorMessage = "Số tài khoản gồm 6–30 chữ số."),
+     Display(Name = "Số tài khoản ngân hàng")]
+    public string BankAccountNumber { get; set; } = "";
+    [Required(ErrorMessage = "Vui lòng nhập trường này."), MinLength(2, ErrorMessage = "Cần ít nhất {1} ký tự."), MaxLength(100, ErrorMessage = "Tối đa {1} ký tự."), Display(Name = "Tên ngân hàng")]
+    public string BankName { get; set; } = "";
 }

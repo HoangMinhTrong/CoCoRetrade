@@ -1,12 +1,60 @@
-@{ ViewData["Title"] = "Tài khoản của tôi"; var wallet = (WalletBalanceDto)ViewBag.Balance; var profile = (UserProfileDto?)ViewBag.UserProfile; }
-<div class="d-flex align-items-center gap-3 mt-4 mb-3">
-    @if (profile?.HasAvatar == true) { <img class="seller-avatar" src="/avatars/@profile.Id" alt="Ảnh đại diện" /> }
-    else { <span class="seller-avatar seller-avatar-empty" aria-hidden="true">CoCo</span> }
-    <div><div class="eyebrow">Góc của bạn</div><h1 class="page-title mt-1 mb-1">Xin chào, @(profile?.FullName ?? User.Identity?.Name)</h1><p class="subtitle mb-0">Điểm tín nhiệm: @(profile?.TrustScore ?? 100)/100</p></div>
+﻿@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService Authorization
+@{
+    ViewData["Title"] = "Tài khoản của tôi";
+    var wallet = (WalletBalanceDto)ViewBag.Balance;
+    var profile = (UserProfileDto?)ViewBag.UserProfile;
+    var displayName = profile?.FullName ?? User.Identity?.Name ?? "bạn";
+    var canManage = (await Authorization.AuthorizeAsync(User, StaffPermissions.ReadPending)).Succeeded;
+}
+<div class="page-heading"><div><span class="eyebrow">Góc của bạn</span><h1 class="page-title">Tài khoản của tôi</h1><p class="subtitle mb-0">Tủ đồ, mua sắm và những cập nhật của bạn ở cùng một nơi.</p></div></div>
+<section class="panel profile-overview mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div class="d-flex align-items-center gap-3">
+            @if (profile?.HasAvatar == true) { <img class="seller-avatar" src="/avatars/@profile.Id" alt="Ảnh đại diện của @displayName" /> }
+            else { <span class="seller-avatar seller-avatar-empty" aria-hidden="true">@(string.IsNullOrWhiteSpace(displayName) ? "C" : displayName.Trim()[0].ToString())</span> }
+            <div><h2 class="h4 mb-1">Xin chào, @displayName</h2><span class="small text-muted"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#shield" /></svg> Điểm tín nhiệm @(profile?.TrustScore ?? 100)/100</span></div>
+        </div>
+        <a class="btn btn-wine" asp-controller="Listing" asp-action="Create"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#plus" /></svg> Ký gửi món đồ</a>
+    </div>
+    <details class="profile-avatar-editor mt-3">
+        <summary class="small text-link">Thay đổi ảnh đại diện</summary>
+        <form asp-action="Avatar" method="post" enctype="multipart/form-data" class="row g-2 align-items-end mt-2">
+            <div class="col-sm-8"><label for="avatarImage" class="form-label">Chọn ảnh mới</label><input id="avatarImage" name="image" type="file" accept="image/jpeg,image/png,image/webp" required class="form-control" /></div>
+            <div class="col-sm-4"><button type="submit" class="btn btn-outline-wine w-100">Lưu ảnh đại diện</button></div>
+        </form>
+    </details>
+</section>
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="row g-4">
+            <section class="col-md-6"><div class="panel h-100 account-section"><h2 class="h5 mb-3">Mua sắm của tôi</h2>
+                <a class="account-menu-row" asp-controller="Orders" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#package" /></svg><span><strong>Đơn hàng</strong><small>Theo dõi đơn mua và đơn bán</small></span><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#chevron-right" /></svg></a>
+                <a class="account-menu-row" asp-controller="Cart" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#bag" /></svg><span><strong>Giỏ hàng</strong><small>Những món đồ bạn đang chọn</small></span><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#chevron-right" /></svg></a>
+                <a class="account-menu-row" asp-action="Saved"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#heart" /></svg><span><strong>Đồ đã lưu</strong><small>Xem lại những món hợp gu</small></span><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#chevron-right" /></svg></a>
+                <a class="account-menu-row" asp-action="Addresses"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#home" /></svg><span><strong>Sổ địa chỉ</strong><small>Quản lý địa chỉ nhận hàng</small></span><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#chevron-right" /></svg></a>
+            </div></section>
+            <section class="col-md-6"><div class="panel h-100 account-section"><h2 class="h5 mb-3">Ký gửi và giao dịch</h2>
+                <a class="account-menu-row" asp-controller="Listing" asp-action="Closet"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#tag" /></svg><span><strong>Tủ đồ của tôi</strong><small>Chờ duyệt, đang bán và đã bán</small></span><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#chevron-right" /></svg></a>
+                <a class="account-menu-row" asp-controller="Offers" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#tag" /></svg><span><strong>Đề xuất giá</strong><small>Giá đã gửi và phản hồi nhận được</small></span><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#chevron-right" /></svg></a>
+                <a class="account-menu-row" asp-controller="Messages" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#message" /></svg><span><strong>Tin nhắn</strong><small>Trò chuyện với người mua, người bán</small></span><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#chevron-right" /></svg></a>
+                <a class="account-menu-row" asp-action="Notifications"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#bell" /></svg><span><strong>Thông báo</strong><small>Cập nhật mới từ CoCo</small></span><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#chevron-right" /></svg></a>
+            </div></section>
+            <section class="col-12"><div class="panel account-section"><h2 class="h5 mb-3">Tài khoản và hỗ trợ</h2>
+                <div class="row gx-4">
+                    <div class="col-md-6"><a class="account-menu-row" asp-controller="Account" asp-action="ChangePassword"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#shield" /></svg><span><strong>Đổi mật khẩu</strong><small>Bảo vệ tài khoản của bạn</small></span><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#chevron-right" /></svg></a></div>
+                    <div class="col-md-6"><a class="account-menu-row" asp-controller="Support" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#message" /></svg><span><strong>Trợ giúp CoCo</strong><small>Gửi câu hỏi cho nhân viên hỗ trợ</small></span><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#chevron-right" /></svg></a></div>
+                    <div class="col-md-6"><a class="account-menu-row" asp-controller="Home" asp-action="Terms"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#check" /></svg><span><strong>Quy định sàn</strong><small>Chính sách mua bán và ký gửi</small></span><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#chevron-right" /></svg></a></div>
+                </div>
+                <form asp-controller="Account" asp-action="Logout" method="post" class="mt-3"><button type="submit" class="btn btn-outline-danger btn-sm">Đăng xuất</button></form>
+            </div></section>
+        </div>
+    </div>
+    <aside class="col-lg-4">
+        <div class="panel wallet-overview mb-4"><span class="eyebrow">Ví ký gửi CoCo</span><p class="small text-muted mt-3 mb-1">Số dư khả dụng</p><strong class="wallet-amount d-block">@wallet.Available.ToString("N0") <span>VNĐ</span></strong><p class="small subtitle mt-3">Theo dõi tiền bán hàng và yêu cầu rút tiền về tài khoản ngân hàng.</p><a asp-action="Wallet" class="btn btn-wine w-100">Xem ví và rút tiền <svg class="icon" aria-hidden="true"><use href="/images/icons.svg#arrow-right" /></svg></a></div>
+        @if (canManage)
+        {
+            <div class="panel account-section"><span class="eyebrow">Dành cho nhân viên CoCo</span><h2 class="h5 mt-2 mb-3">Quản trị và kiểm định</h2><p class="small subtitle">Mở không gian làm việc để theo dõi các công việc được phân quyền.</p><a class="btn btn-outline-wine w-100" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Mở trang quản trị / kiểm định <svg class="icon" aria-hidden="true"><use href="/images/icons.svg#arrow-right" /></svg></a></div>
+        }
+    </aside>
 </div>
-<form asp-action="Avatar" method="post" enctype="multipart/form-data" class="d-flex flex-wrap align-items-center gap-2 mb-4"><label for="avatarImage" class="small">Đổi ảnh đại diện</label><input id="avatarImage" name="image" type="file" accept="image/jpeg,image/png,image/webp" required class="form-control form-control-sm" style="max-width:260px" /><button type="submit" class="btn btn-outline-wine btn-sm">Lưu ảnh</button></form>
-<div class="panel mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3"><div><div class="eyebrow">Ví ký gửi CoCo</div><strong class="fs-4">@wallet.Available.ToString("N0")đ khả dụng</strong></div><a asp-action="Wallet" class="btn btn-wine">Xem ví & rút tiền →</a></div>
-<div class="d-flex flex-wrap gap-2 mb-4"><a asp-controller="Messages" asp-action="Index" class="btn btn-outline-wine">Tin nhắn</a><a asp-controller="Cart" asp-action="Index" class="btn btn-outline-wine">Giỏ hàng</a><a asp-action="Saved" class="btn btn-outline-wine">♡ Đồ đã lưu</a><a asp-action="Addresses" class="btn btn-outline-wine">Sổ địa chỉ</a><a asp-action="Notifications" class="btn btn-outline-wine">Thông báo</a><a asp-controller="Support" asp-action="Index" class="btn btn-outline-wine">Trợ giúp CSKH</a><a asp-controller="Home" asp-action="Terms" class="btn btn-outline-wine">Quy định sàn</a></div>
-<div class="row g-3 mb-5"><div class="col-md-3"><div class="panel h-100"><div class="eyebrow mb-2">Bán hàng</div><h2 class="display-serif fs-4">Tủ đồ của tôi</h2><p class="subtitle">Theo dõi đồ đang chờ duyệt, đang bán và bị từ chối.</p><a class="btn btn-wine" asp-controller="Listing" asp-action="Closet">Mở tủ đồ →</a></div></div><div class="col-md-3"><div class="panel h-100"><div class="eyebrow mb-2">Giao dịch</div><h2 class="display-serif fs-4">Đề xuất giá</h2><p class="subtitle">Xem giá đã gửi, phản hồi người mua và chốt giá.</p><a class="btn btn-wine" asp-controller="Offers" asp-action="Index">Xem đề xuất →</a></div></div><div class="col-md-3"><div class="panel h-100"><div class="eyebrow mb-2">Mua & bán</div><h2 class="display-serif fs-4">Đơn hàng</h2><p class="subtitle">Theo dõi đơn đang xử lý, nhận hàng và đã hoàn tất.</p><a class="btn btn-wine" asp-controller="Orders" asp-action="Index">Xem đơn →</a></div></div><div class="col-md-3"><div class="panel h-100"><div class="eyebrow mb-2">Cài đặt</div><h2 class="display-serif fs-4">Bảo mật tài khoản</h2><p class="subtitle">Cập nhật mật khẩu và quản lý quyền truy cập.</p><a class="btn btn-outline-wine" asp-controller="Account" asp-action="ChangePassword">Đổi mật khẩu</a></div></div></div>
-@if (User.IsInRole("Admin")) { <div class="panel mb-4"><div class="eyebrow mb-2">Quản trị CoCo</div><h2 class="display-serif fs-4">Kiểm định & Đơn hàng</h2><div class="d-flex gap-2 flex-wrap"><a class="btn btn-wine" asp-area="Admin" asp-controller="Inspection" asp-action="Index">Kiểm định →</a><a class="btn btn-outline-wine" asp-area="Admin" asp-controller="Orders" asp-action="Index">Quản lý đơn →</a><a class="btn btn-outline-wine" asp-area="Admin" asp-controller="HelpDesk" asp-action="Index">Yêu cầu hỗ trợ →</a></div></div> }
-<form asp-controller="Account" asp-action="Logout" method="post"><button type="submit" class="btn btn-outline-danger">Đăng xuất</button></form>

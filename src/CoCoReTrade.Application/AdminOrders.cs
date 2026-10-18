@@ -8,6 +8,7 @@ public interface IAdminOrderService
     Task<OrderDto> ConfirmPaymentAsync(Guid id, string actorId, string reference, CancellationToken ct);
     Task<OrderDto> CompleteAsync(Guid id, string actorId, CancellationToken ct);
     Task<OrderDto> CancelAsync(Guid id, string actorId, CancellationToken ct);
+    Task<OrderDto> ReturnUndeliveredAsync(Guid id, string actorId, bool itemReturnedToStore, CancellationToken ct);
 }
 
 public sealed class AdminOrderService(IOrderService orders, IStaffPermissionChecker permissions) : IAdminOrderService
@@ -41,5 +42,10 @@ public sealed class AdminOrderService(IOrderService orders, IStaffPermissionChec
     {
         await permissions.EnsureAsync(actorId, StaffPermissions.ManageOrders, ct);
         return await orders.CancelAsync(id, actorId, true, ct);
+    }
+    public async Task<OrderDto> ReturnUndeliveredAsync(Guid id, string actorId, bool itemReturnedToStore, CancellationToken ct)
+    {
+        await permissions.EnsureAsync(actorId, StaffPermissions.ManageOrders, ct);
+        return await orders.ReturnUndeliveredAsync(id, actorId, itemReturnedToStore, ct);
     }
 }

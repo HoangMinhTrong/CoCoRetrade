@@ -1,27 +1,47 @@
 @model IReadOnlyList<AdminUserRow>
 @{ ViewData["Title"] = "Quản lý người dùng"; }
-<div class="eyebrow mt-4">CoCo Backoffice</div><h1 class="page-title mt-1">Người dùng & quyền kiểm định</h1>
-<p class="subtitle">Quyền đăng bán được cấp riêng cho từng kiểm định viên. Thay đổi quyền yêu cầu đăng nhập lại.</p>
-<form method="get" class="panel d-flex flex-column flex-sm-row gap-2 mb-4"><input class="form-control" type="search" name="search" value="@ViewBag.Search" placeholder="Tên, email hoặc số điện thoại" /><button class="btn btn-wine">Tìm</button></form>
+<header class="admin-page-header"><div><div class="eyebrow">Tài khoản & phân quyền</div><h1 class="page-title">Người dùng</h1><p class="subtitle mb-0">Quản lý thành viên, kiểm định viên và quyền đăng bán sản phẩm.</p></div><span class="admin-status">@Model.Count kết quả</span></header>
+<form method="get" class="panel admin-toolbar mb-4"><div class="flex-grow-1"><label for="userSearch" class="form-label">Tìm tài khoản</label><input id="userSearch" class="form-control" type="search" name="search" value="@ViewBag.Search" placeholder="Nhập tên, email hoặc số điện thoại" /></div><button class="btn btn-wine" type="submit"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#search" /></svg> Tìm kiếm</button></form>
+<p class="small text-muted mb-4"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#shield" /></svg> Sau khi thay đổi quyền, người dùng cần đăng nhập lại để áp dụng.</p>
+@if (Model.Count == 0)
+{
+    <div class="empty-state"><h2 class="fs-4">Không tìm thấy tài khoản</h2><p class="mb-0">Kiểm tra lại tên, email hoặc số điện thoại bạn vừa nhập.</p></div>
+}
 <div class="row g-3 mb-5">
 @foreach (var user in Model)
 {
-    <div class="col-12 col-xl-6"><div class="panel h-100">
-        <h2 class="fs-5">@user.FullName</h2><div class="small text-muted">@user.Email · @user.Phone</div>
-        <div class="mt-2"><span class="badge bg-secondary">@(user.IsAdmin ? "Admin" : user.IsInspector ? "Inspector" : "User")</span> <span class="badge bg-info text-dark">Tín nhiệm: @user.TrustScore/100</span>
-        @if (user.TrustSuspended) { <span class="badge bg-danger">Tạm khóa theo điểm</span> }
-        @if (user.IsLocked) { <span class="badge bg-danger">Đã khóa</span> }
-        @if (user.HasDirectPublishGrant) { <span class="badge bg-success">Products.Publish</span> }</div>
+    <div class="col-12 col-xl-6"><article class="panel admin-record-card h-100">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3"><h2 class="fs-5 mb-0">@user.FullName</h2><span class="admin-status">@(user.IsAdmin ? "Quản trị viên" : user.IsInspector ? "Kiểm định viên" : "Người dùng")</span></div>
+        <div class="small text-muted text-break">@user.Email</div><div class="small text-muted mt-1">@user.Phone</div>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+            <span class="admin-status admin-status--muted">Tín nhiệm @user.TrustScore/100</span>
+            @if (user.TrustSuspended) { <span class="admin-status admin-status--danger">Tạm khóa theo điểm</span> }
+            @if (user.IsLocked) { <span class="admin-status admin-status--danger">Đã khóa tài khoản</span> }
+            @if (user.HasDirectPublishGrant) { <span class="admin-status admin-status--success">Được phép đăng bán</span> }
+        </div>
         @if (!user.IsAdmin && user.Id != User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value)
         {
-            <div class="d-flex flex-wrap gap-2 mt-3">
-                <form asp-action="Inspector" method="post"><input type="hidden" name="id" value="@user.Id" /><input type="hidden" name="enabled" value="@(!user.IsInspector)" /><button class="btn btn-sm btn-outline-wine">@(user.IsInspector ? "Thu hồi Inspector" : "Cấp Inspector")</button></form>
-                @if (user.IsInspector)
-                { <form asp-action="PublishGrant" method="post"><input type="hidden" name="id" value="@user.Id" /><input type="hidden" name="enabled" value="@(!user.HasDirectPublishGrant)" /><button class="btn btn-sm btn-outline-wine">@(user.HasDirectPublishGrant ? "Thu hồi Publish" : "Cấp Publish")</button></form> }
-                <form asp-action="Lock" method="post"><input type="hidden" name="id" value="@user.Id" /><input type="hidden" name="locked" value="@(!user.IsLocked)" /><button class="btn btn-sm @(user.IsLocked ? "btn-outline-success" : "btn-outline-danger")">@(user.IsLocked ? "Mở khóa" : "Khóa tài khoản")</button></form>
+            <div class="border-top pt-3 mt-3">
+                <div class="small fw-semibold mb-2">Quyền truy cập</div>
+                <div class="d-flex flex-wrap gap-2">
+                    <form asp-action="Inspector" method="post"><input type="hidden" name="id" value="@user.Id" /><input type="hidden" name="enabled" value="@(!user.IsInspector)" /><button class="btn btn-sm btn-outline-wine" type="submit">@(user.IsInspector ? "Thu hồi quyền kiểm định" : "Cấp quyền kiểm định")</button></form>
+                    @if (user.IsInspector)
+                    {
+                        <form asp-action="PublishGrant" method="post"><input type="hidden" name="id" value="@user.Id" /><input type="hidden" name="enabled" value="@(!user.HasDirectPublishGrant)" /><button class="btn btn-sm btn-outline-wine" type="submit">@(user.HasDirectPublishGrant ? "Thu hồi quyền đăng bán" : "Cấp quyền đăng bán")</button></form>
+                    }
+                </div>
             </div>
-            <form asp-action="Trust" method="post" class="row g-2 mt-2"><input type="hidden" name="id" value="@user.Id" /><div class="col-3"><input class="form-control form-control-sm" type="number" name="score" min="0" max="100" value="@user.TrustScore" aria-label="Điểm tín nhiệm" required /></div><div class="col-6"><input class="form-control form-control-sm" name="reason" placeholder="Lý do điều chỉnh" minlength="5" maxlength="500" required /></div><div class="col-3"><button class="btn btn-outline-wine btn-sm w-100" type="submit">Lưu điểm</button></div></form>
+            <details class="border-top pt-3 mt-3">
+                <summary class="small fw-semibold">Điểm tín nhiệm & trạng thái tài khoản</summary>
+                <form asp-action="Trust" method="post" class="row g-2 mt-2">
+                    <input type="hidden" name="id" value="@user.Id" />
+                    <div class="col-4"><label class="form-label small" for="score-@user.Id">Điểm tín nhiệm</label><input id="score-@user.Id" class="form-control form-control-sm" type="number" name="score" min="0" max="100" value="@user.TrustScore" required /></div>
+                    <div class="col-8"><label class="form-label small" for="reason-@user.Id">Lý do điều chỉnh</label><input id="reason-@user.Id" class="form-control form-control-sm" name="reason" placeholder="Nhập lý do" minlength="5" maxlength="500" required /></div>
+                    <div class="col-12"><button class="btn btn-outline-wine btn-sm" type="submit">Lưu điểm tín nhiệm</button></div>
+                </form>
+                <form asp-action="Lock" method="post" class="mt-3"><input type="hidden" name="id" value="@user.Id" /><input type="hidden" name="locked" value="@(!user.IsLocked)" /><button class="btn btn-sm @(user.IsLocked ? "btn-outline-success" : "btn-outline-danger")" type="submit">@(user.IsLocked ? "Mở khóa tài khoản" : "Khóa tài khoản")</button></form>
+            </details>
         }
-    </div></div>
+    </article></div>
 }
 </div>

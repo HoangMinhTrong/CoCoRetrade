@@ -8,8 +8,8 @@ public sealed class MarketplacePolicy
     public int CommissionPercent { get; }
     public MarketplacePolicy(int maximumOfferDiscountPercent = 25, int commissionPercent = 15)
     {
-        if (maximumOfferDiscountPercent is < 20 or > 30) throw new ArgumentOutOfRangeException(nameof(maximumOfferDiscountPercent), "Allowed range is 20–30%.");
-        if (commissionPercent is < 15 or > 20) throw new ArgumentOutOfRangeException(nameof(commissionPercent), "Allowed range is 15–20%.");
+        if (maximumOfferDiscountPercent is < 20 or > 30) throw new ArgumentOutOfRangeException(nameof(maximumOfferDiscountPercent), "Mức giảm tối đa phải từ 20% đến 30%.");
+        if (commissionPercent is < 15 or > 20) throw new ArgumentOutOfRangeException(nameof(commissionPercent), "Hoa hồng phải từ 15% đến 20%.");
         MaximumOfferDiscountPercent = maximumOfferDiscountPercent;
         CommissionPercent = commissionPercent;
     }
@@ -22,7 +22,18 @@ public sealed record OfferDto(Guid Id, Guid ProductId, string ProductSku, string
     decimal AskingPrice, decimal CurrentPrice, decimal? AcceptedPrice, OfferStatus Status, int BuyerOffersUsed,
     DateTime CreatedAtUtc, DateTime ExpiresAtUtc, IReadOnlyList<OfferEventDto> Events,
     decimal? CounterMinimumPrice = null, decimal? CounterMaximumPrice = null);
-public sealed record NotificationDto(Guid Id, string Category, string Message, Guid? OfferId, Guid? OrderId, bool IsRead, DateTime CreatedAtUtc);
+public sealed record NotificationDto(Guid Id, string Category, string Message, Guid? OfferId, Guid? OrderId,
+    bool IsRead, DateTime CreatedAtUtc, Guid? ConversationId = null, Guid? ProductId = null)
+{
+    public bool HasDestination => OfferId.HasValue || OrderId.HasValue || ConversationId.HasValue ||
+        ProductId.HasValue || Category.Equals("Cart", StringComparison.OrdinalIgnoreCase) ||
+        Category.Equals("Carts", StringComparison.OrdinalIgnoreCase) ||
+        Category.Equals("Messages", StringComparison.OrdinalIgnoreCase) ||
+        Category.Equals("Offers", StringComparison.OrdinalIgnoreCase) ||
+        Category.Equals("Orders", StringComparison.OrdinalIgnoreCase) ||
+        Category.Equals("Wallets", StringComparison.OrdinalIgnoreCase) ||
+        Category.Equals("Support", StringComparison.OrdinalIgnoreCase);
+}
 
 public interface IOfferRepository
 {
@@ -53,12 +64,12 @@ public sealed class OfferService(IOfferRepository repository, MarketplacePolicy 
     public Task<OfferDto> MakeAsync(Guid productId, string buyerId, decimal price, CancellationToken ct) =>
         repository.InSerializableTransactionAsync(async () =>
         {
-            var product = await repository.ProductAsync(productId, ct) ?? throw new KeyNotFoundException("Product not found.");
+            var product = await repository.ProductAsync(productId, ct) ?? throw new KeyNotFoundException("Không tìm thấy sản phẩm.");
             var used = await repository.BuyerPriceCountAsync(productId, buyerId, ct);
             var now = clock.GetUtcNow().UtcDateTime;
             var offer = Offer.Create(product, buyerId, price, policy.MinimumOffer(product.AskingPrice), used, now);
             await repository.AddOfferAsync(offer, ct);
-            Notify(product.SellerId, offer.Id, $"Có giá đề xuất {price:N0}đ cho {product.Sku}.", now);
+            Notify(product.SellerId, offer.Id, $"Có giá đề xuất {price:N0} VNĐ cho {product.Sku}.", now);
             await repository.SaveAsync(ct);
             return ToDto(offer, used + 1, now);
         }, ct);
@@ -66,8 +77,8 @@ public sealed class OfferService(IOfferRepository repository, MarketplacePolicy 
     public Task<OfferDto> RespondAsync(Guid offerId, string actorId, OfferResponse action, decimal? price, CancellationToken ct) =>
         repository.InSerializableTransactionAsync(async () =>
         {
-            var offer = await repository.OfferAsync(offerId, ct) ?? throw new KeyNotFoundException("Offer not found.");
-            var product = await repository.ProductAsync(offer.ProductId, ct) ?? throw new KeyNotFoundException("Product not found.");
+            var offer = await repository.OfferAsync(offerId, ct) ?? throw new KeyNotFoundException("Không tìm thấy đề xuất giá.");
+            var product = await repository.ProductAsync(offer.ProductId, ct) ?? throw new KeyNotFoundException("Không tìm thấy sản phẩm.");
             var now = clock.GetUtcNow().UtcDateTime;
             var used = await repository.BuyerPriceCountAsync(product.Id, offer.BuyerId, ct);
             switch (action)
@@ -75,7 +86,7 @@ public sealed class OfferService(IOfferRepository repository, MarketplacePolicy 
                 case OfferResponse.Accept: offer.Accept(actorId, product.Status, now); break;
                 case OfferResponse.Decline: offer.Decline(actorId, product.Status, now); break;
                 case OfferResponse.Counter:
-                    if (price is null) throw new ArgumentException("Counter price is required.");
+                    if (price is null) throw new ArgumentException("Cần nhập mức giá đề xuất lại.");
                     offer.Counter(actorId, price.Value, policy.MinimumOffer(product.AskingPrice), used, product.Status, now);
                     if (actorId == offer.BuyerId) used++;
                     break;
@@ -85,9 +96,9 @@ public sealed class OfferService(IOfferRepository repository, MarketplacePolicy 
             repository.AddEvent(offer.Events[^1]);
             var message = action switch
             {
-                OfferResponse.Accept => $"Giá {offer.AcceptedPrice:N0}đ cho {offer.ProductSku} đã được chấp nhận. Có hiệu lực 24 giờ.",
+                OfferResponse.Accept => $"Giá {offer.AcceptedPrice:N0} VNĐ cho {offer.ProductSku} đã được chấp nhận. Có hiệu lực 24 giờ.",
                 OfferResponse.Decline => $"Đề xuất cho {offer.ProductSku} đã bị từ chối.",
-                _ => $"Có giá đề xuất lại {offer.CurrentPrice:N0}đ cho {offer.ProductSku}."
+                _ => $"Có giá đề xuất lại {offer.CurrentPrice:N0} VNĐ cho {offer.ProductSku}."
             };
             Notify(other, offer.Id, message, now);
             await repository.SaveAsync(ct);

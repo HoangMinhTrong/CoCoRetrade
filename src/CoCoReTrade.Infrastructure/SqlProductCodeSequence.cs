@@ -1,6 +1,7 @@
 using System.Data;
 using CoCoReTrade.Application;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CoCoReTrade.Infrastructure;
 
@@ -15,6 +16,8 @@ public sealed class SqlProductCodeSequence(AppDbContext db) : IProductCodeSequen
         {
             await using var command = connection.CreateCommand();
             command.CommandText = "SELECT NEXT VALUE FOR dbo.ProductSkuSequence";
+            if (db.Database.CurrentTransaction is { } transaction)
+                command.Transaction = transaction.GetDbTransaction();
             return Convert.ToInt64(await command.ExecuteScalarAsync(ct));
         }
         finally { if (close) await connection.CloseAsync(); }

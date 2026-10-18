@@ -12,9 +12,8 @@ public sealed class AdminWalletTests
             500_000, 300_000, 95, true,
             [new ProductImage("a.jpg", "image/jpeg", 0), new ProductImage("b.jpg", "image/jpeg", 1), new ProductImage("c.jpg", "image/jpeg", 2)]);
         product.RecordInspection("inspector", true, product.Name, product.Brand, product.Category,
-            product.Size, product.OriginalPrice, product.AskingPrice, 95, "Physical item checked",
-            "CC-2026-000100", [], now);
-        product.Publish(now);
+            product.Size, product.OriginalPrice, product.AskingPrice, 95, "Physical item checked", [], now);
+        product.Publish("CC-2026-000100", now);
         var order = Order.Create(product, null, "buyer", Guid.NewGuid(), FulfillmentType.Shipping,
             "Buyer Name", "0905123456", "Hanoi", "Ward A", "12 Main Street", null, null,
             20_000, 15, now);

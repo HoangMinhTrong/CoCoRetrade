@@ -4,11 +4,21 @@ using CoCoReTrade.Web.Realtime;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Localization;
+using System.Globalization;
 using System.Text.Json.Serialization;
+
+var displayCulture = (CultureInfo)CultureInfo.GetCultureInfo("vi-VN").Clone();
+displayCulture.NumberFormat.NumberGroupSeparator = ",";
+displayCulture.NumberFormat.NumberDecimalSeparator = ".";
+displayCulture.NumberFormat.CurrencyGroupSeparator = ",";
+displayCulture.NumberFormat.CurrencyDecimalSeparator = ".";
+CultureInfo.DefaultThreadCurrentCulture = displayCulture;
+CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.GetCultureInfo("vi-VN");
 
 var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("CoCo")
-    ?? throw new InvalidOperationException("Configure ConnectionStrings:CoCo.");
+    ?? throw new InvalidOperationException("Hãy cấu hình chuỗi kết nối ConnectionStrings:CoCo.");
 var previewMode = builder.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("Preview:Enabled");
 
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
@@ -22,7 +32,8 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     options.User.RequireUniqueEmail = true;
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
     options.Lockout.MaxFailedAccessAttempts = 5;
-}).AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders();
+}).AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders()
+    .AddErrorDescriber<VietnameseIdentityErrorDescriber>();
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Account/Login";
@@ -62,6 +73,12 @@ builder.Services.AddControllersWithViews(options =>
     {
         options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
         options.Filters.Add(new CoCoReTrade.Web.AuthorizationExceptionFilter());
+        options.ModelBindingMessageProvider.SetValueIsInvalidAccessor(value => $"Giá trị '{value}' không hợp lệ.");
+        options.ModelBindingMessageProvider.SetValueMustBeANumberAccessor(name => $"{name} phải là số.");
+        options.ModelBindingMessageProvider.SetNonPropertyValueMustBeANumberAccessor(() => "Giá trị phải là số.");
+        options.ModelBindingMessageProvider.SetAttemptedValueIsInvalidAccessor((value, name) => $"Giá trị '{value}' của {name} không hợp lệ.");
+        options.ModelBindingMessageProvider.SetUnknownValueIsInvalidAccessor(name => $"Giá trị của {name} không hợp lệ.");
+        options.ModelBindingMessageProvider.SetValueMustNotBeNullAccessor(name => $"Cần nhập {name}.");
     })
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
@@ -94,6 +111,9 @@ builder.Services.AddScoped<IAdminProductService, AdminProductService>();
 builder.Services.AddScoped<IAdminUserRepository, AdminUserRepository>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 builder.Services.AddScoped<IAdminWalletRepository, AdminWalletRepository>();
+builder.Services.AddScoped<IAdminFinancialReportRepository, AdminFinancialReportRepository>();
+builder.Services.AddScoped<IAdminFinancialReportService, AdminFinancialReportService>();
+builder.Services.AddScoped<ISellerPayoutService, SellerPayoutService>();
 builder.Services.AddScoped<IAdminWalletService, AdminWalletService>();
 builder.Services.AddScoped<IWalletWithdrawalRepository, WalletWithdrawalRepository>();
 builder.Services.AddScoped<IWalletService, WalletService>();
@@ -108,6 +128,7 @@ builder.Services.AddScoped<IOfferRepository, OfferRepository>();
 builder.Services.AddScoped<IOfferService, OfferService>();
 builder.Services.AddScoped<IOfferExpirationService, OfferExpirationService>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IAcceptedPickupExpirationRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IOrderExpirationService, OrderExpirationService>();
 builder.Services.AddScoped<IShippingZoneRepository, ShippingZoneRepository>();
@@ -144,6 +165,12 @@ builder.Services.AddSingleton(new ShippingPolicy(innerZones,
     builder.Configuration["Shipping:StoreAddress"] ?? ""));
 
 var app = builder.Build();
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture(displayCulture, CultureInfo.GetCultureInfo("vi-VN")),
+    SupportedCultures = [displayCulture],
+    SupportedUICultures = [CultureInfo.GetCultureInfo("vi-VN")]
+});
 if (!app.Environment.IsDevelopment()) { app.UseExceptionHandler("/Home/Error"); app.UseHsts(); }
 app.UseHttpsRedirection();
 app.UseStaticFiles();

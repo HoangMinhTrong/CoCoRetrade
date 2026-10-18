@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CoCoReTrade.Web.Controllers.Api.V1;
 
 public sealed record RejectListingRequest(string Reason, string ExpectedRowVersion);
-public sealed record PublishListingRequest(string ExpectedRowVersion, string ConfirmedSku, bool PhysicalItemConfirmed);
+public sealed record PublishListingRequest(string ExpectedRowVersion, bool PhysicalItemConfirmed);
 public sealed record SelectCoverRequest(Guid ImageId, string ExpectedRowVersion);
 
 [ApiController]
@@ -41,7 +41,7 @@ public sealed class AdminInspectionController(IAdminProductService products) : C
     [HttpPost("{id:guid}/publish"), Authorize(Policy = StaffPermissions.Publish)]
     public Task<ActionResult<AdminProductDetails>> Publish(Guid id, [FromBody] PublishListingRequest request, CancellationToken ct) =>
         Execute(() => products.PublishAsync(ActorId, id, request.ExpectedRowVersion,
-            request.ConfirmedSku, request.PhysicalItemConfirmed, ct));
+            request.PhysicalItemConfirmed, ct));
 
     [HttpPost("{id:guid}/reject"), Authorize(Policy = StaffPermissions.Reject)]
     public Task<ActionResult<AdminProductDetails>> Reject(Guid id, [FromBody] RejectListingRequest request, CancellationToken ct) =>

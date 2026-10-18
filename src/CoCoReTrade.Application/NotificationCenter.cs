@@ -13,6 +13,7 @@ public interface INotificationCenter
 {
     Task<IReadOnlyList<NotificationDto>> ListAsync(string userId, string? group, CancellationToken ct);
     Task MarkReadAsync(string userId, Guid id, CancellationToken ct);
+    Task<NotificationDto> OpenAsync(string userId, Guid id, CancellationToken ct);
 }
 
 public sealed class NotificationCenter(INotificationCenterRepository repository) : INotificationCenter
@@ -25,7 +26,7 @@ public sealed class NotificationCenter(INotificationCenterRepository repository)
         var notifications = await repository.ForUserAsync(userId, ct);
         return notifications.Where(x => group is null || Group(x.Category) == group)
             .Select(x => new NotificationDto(x.Id, x.Category, x.Message,
-                x.OfferId, x.OrderId, x.IsRead, x.CreatedAtUtc)).ToList();
+                x.OfferId, x.OrderId, x.IsRead, x.CreatedAtUtc, x.ConversationId, x.ProductId)).ToList();
     }
     public async Task MarkReadAsync(string userId, Guid id, CancellationToken ct)
     {
@@ -35,6 +36,20 @@ public sealed class NotificationCenter(INotificationCenterRepository repository)
         if (notification.IsRead) return;
         notification.IsRead = true;
         await repository.SaveAsync(ct);
+    }
+    public async Task<NotificationDto> OpenAsync(string userId, Guid id, CancellationToken ct)
+    {
+        RequireUser(userId);
+        var notification = await repository.OwnedAsync(userId, id, ct) ??
+            throw new KeyNotFoundException("Thông báo không tồn tại.");
+        if (!notification.IsRead)
+        {
+            notification.IsRead = true;
+            await repository.SaveAsync(ct);
+        }
+        return new NotificationDto(notification.Id, notification.Category, notification.Message,
+            notification.OfferId, notification.OrderId, notification.IsRead, notification.CreatedAtUtc,
+            notification.ConversationId, notification.ProductId);
     }
     private static string Group(string category) => category.ToLowerInvariant() switch
     {

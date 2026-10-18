@@ -1,8 +1,19 @@
 @model IReadOnlyList<AuditEntry>
-@{ ViewData["Title"] = "Nhật ký kiểm định"; }
-<div class="eyebrow mt-4">CoCo Backoffice</div><h1 class="page-title mt-1">Nhật ký kiểm định</h1>
-<form method="get" class="panel d-flex flex-column flex-sm-row gap-2 mb-4"><input class="form-control" name="productId" type="text" value="@ViewBag.ProductId" placeholder="Product ID (không bắt buộc)" /><button class="btn btn-wine">Lọc</button></form>
-<div class="panel table-responsive mb-5"><table class="table align-middle mb-0"><thead><tr><th>Thời gian UTC</th><th>Hành động</th><th>Người thực hiện</th><th>Sản phẩm</th><th>Chi tiết</th></tr></thead><tbody>
-@foreach (var item in Model)
-{ <tr><td>@item.CreatedAtUtc.ToString("dd/MM/yyyy HH:mm")</td><td>@item.Action</td><td>@item.ActorId</td><td>@item.EntityId</td><td>@item.Details</td></tr> }
-</tbody></table>@if (Model.Count == 0) { <p class="text-muted my-3">Chưa có sự kiện.</p> }</div>
+@{ ViewData["Title"] = "Lịch sử kiểm định"; }
+<header class="admin-page-header"><div><div class="eyebrow">Lịch sử hoạt động</div><h1 class="page-title">Nhật ký kiểm định</h1><p class="subtitle mb-0">Tra cứu các thao tác và thông tin đã thay đổi trên sản phẩm.</p></div><span class="admin-status">@Model.Count sự kiện</span></header>
+<form method="get" class="panel admin-toolbar mb-4"><div class="flex-grow-1"><label class="form-label" for="auditProductId">Lọc theo sản phẩm</label><input id="auditProductId" class="form-control" name="productId" type="text" value="@ViewBag.ProductId" placeholder="Mã định danh sản phẩm (không bắt buộc)" /></div><button class="btn btn-wine" type="submit"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#filter" /></svg> Lọc nhật ký</button>@if (ViewBag.ProductId is not null) { <a class="btn btn-outline-wine" asp-action="Index">Xóa lọc</a> }</form>
+<div class="panel mb-5">
+@if (Model.Count == 0)
+{
+    <div class="empty-state border-0"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#shield" /></svg><h2 class="fs-4 mt-3">Chưa có sự kiện phù hợp</h2><p class="mb-0">Lịch sử sẽ được cập nhật khi có thao tác kiểm định hoặc duyệt sản phẩm.</p></div>
+}
+else
+{
+    <div class="table-responsive"><table class="table admin-table align-middle mb-0"><caption class="visually-hidden">Nhật ký kiểm định, thời gian theo giờ Việt Nam</caption><thead><tr><th scope="col">Thời gian</th><th scope="col">Hành động</th><th scope="col">Người thực hiện</th><th scope="col">Sản phẩm</th><th scope="col">Chi tiết</th></tr></thead><tbody>
+    @foreach (var item in Model)
+    {
+        <tr><td class="text-nowrap">@item.CreatedAtUtc.AddHours(7).ToString("dd/MM/yyyy")<div class="small text-muted">@item.CreatedAtUtc.AddHours(7).ToString("HH:mm")</div></td><td><span class="admin-status">@UiText.For(item.Action)</span></td><td class="small text-break">@item.ActorId</td><td class="small text-break">@item.EntityId</td><td class="small">@UiText.AuditDetails(item.Details)</td></tr>
+    }
+    </tbody></table></div>
+}
+</div>

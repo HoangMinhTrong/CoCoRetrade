@@ -4,8 +4,9 @@ namespace CoCoReTrade.Application;
 
 public sealed record WalletBalanceDto(decimal PendingSellerProceeds, decimal Available,
     decimal PendingWithdrawal, decimal Withdrawn);
-public sealed record WithdrawalDto(Guid Id, decimal Amount, string BankAccountMasked,
-    string Status, DateTime CreatedAtUtc, DateTime? DecidedAtUtc, string? DecisionReason);
+public sealed record WithdrawalDto(Guid Id, decimal Amount, string BankAccountNumber,
+    string Status, DateTime CreatedAtUtc, DateTime? DecidedAtUtc, string? DecisionReason,
+    string? BankName = null, DateTime? TransferredAtUtc = null, string? TransferReference = null);
 
 public interface IWalletWithdrawalRepository
 {
@@ -29,9 +30,11 @@ public interface IWalletService
     Task<WalletBalanceDto> BalanceAsync(string userId, CancellationToken ct);
     Task<IReadOnlyList<WithdrawalDto>> WithdrawalsAsync(string userId, CancellationToken ct);
     Task<WithdrawalDto> RequestWithdrawalAsync(string userId, Guid requestKey,
-        decimal amount, string bankAccountMasked, CancellationToken ct);
+        decimal amount, string bankAccountNumber, string bankName, CancellationToken ct);
     Task<WithdrawalDto> DecideWithdrawalAsync(string adminId, Guid requestId,
         bool approve, string? reason, CancellationToken ct);
+    Task<WithdrawalDto> ConfirmTransferAsync(string adminId, Guid requestId,
+        string transferReference, CancellationToken ct);
     Task<AdminWalletDetails> CreditCompletedOrderAsync(string adminId, Guid orderId,
         bool confirmed, CancellationToken ct);
 }
@@ -41,12 +44,12 @@ public sealed class WalletService(IWalletWithdrawalRepository repository, IAdmin
 {
     public Task<WalletBalanceDto> BalanceAsync(string userId, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(userId)) throw new UnauthorizedAccessException("Sign in is required.");
+        if (string.IsNullOrWhiteSpace(userId)) throw new UnauthorizedAccessException("Hãy đăng nhập.");
         return repository.BalanceAsync(userId, ct);
     }
     public async Task<IReadOnlyList<WithdrawalDto>> WithdrawalsAsync(string userId, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(userId)) throw new UnauthorizedAccessException("Sign in is required.");
+        if (string.IsNullOrWhiteSpace(userId)) throw new UnauthorizedAccessException("Hãy đăng nhập.");
         return (await repository.ForUserWithdrawalsAsync(userId, ct)).Select(ToDto).ToList();
     }
 
@@ -55,22 +58,24 @@ public sealed class WalletService(IWalletWithdrawalRepository repository, IAdmin
         adminWallets.CreditCompletedOrderAsync(adminId, orderId, confirmed, ct);
 
     public Task<WithdrawalDto> RequestWithdrawalAsync(string userId, Guid requestKey,
-        decimal amount, string bankAccountMasked, CancellationToken ct)
+        decimal amount, string bankAccountNumber, string bankName, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(userId)) throw new UnauthorizedAccessException("Sign in is required.");
+        if (string.IsNullOrWhiteSpace(userId)) throw new UnauthorizedAccessException("Hãy đăng nhập.");
+        var account = bankAccountNumber?.Trim() ?? "";
+        var bank = bankName?.Trim() ?? "";
         if (requestKey == Guid.Empty || amount <= 0 || amount != decimal.Truncate(amount) ||
-            string.IsNullOrWhiteSpace(bankAccountMasked) || bankAccountMasked.Length > 60 ||
-            !bankAccountMasked.Contains('*'))
-            throw new ArgumentException("A valid amount, request key and masked bank account are required.");
+            !System.Text.RegularExpressions.Regex.IsMatch(account, @"^[0-9]{6,30}$") ||
+            bank.Length is < 2 or > 100)
+            throw new ArgumentException("Cần nhập số tiền hợp lệ, số tài khoản từ 6 đến 30 chữ số và tên ngân hàng.");
         return repository.InTransactionAsync(async () =>
         {
             var wallet = await repository.WalletForUserAsync(userId, ct) ??
-                throw new InvalidOperationException("No available wallet balance.");
+                throw new InvalidOperationException("Ví không có số dư khả dụng.");
             var existing = await repository.ByRequestKeyAsync(wallet.Id, requestKey, ct);
             if (existing is not null)
             {
-                if (existing.Amount != amount || existing.BankAccountMasked != bankAccountMasked.Trim())
-                    throw new InvalidOperationException("Request key was used for different withdrawal details.");
+                if (existing.Amount != amount || existing.BankAccountNumber != account || existing.BankName != bank)
+                    throw new InvalidOperationException("Yêu cầu này đã được gửi với thông tin rút tiền khác.");
                 return ToDto(existing);
             }
             wallet.ReserveWithdrawal(amount);
@@ -78,7 +83,8 @@ public sealed class WalletService(IWalletWithdrawalRepository repository, IAdmin
             var request = new WithdrawalRequest
             {
                 Id = Guid.NewGuid(), WalletId = wallet.Id, RequestKey = requestKey,
-                Amount = amount, BankAccountMasked = bankAccountMasked.Trim(), CreatedAtUtc = now
+                Amount = amount, BankAccountNumber = account, BankName = bank,
+                BankAccountMasked = "****" + account[^4..], CreatedAtUtc = now
             };
             repository.AddWithdrawal(request);
             repository.AddTransaction(new WalletTransaction
@@ -87,7 +93,7 @@ public sealed class WalletService(IWalletWithdrawalRepository repository, IAdmin
                 Amount = -amount, Type = "WithdrawalReserved", CreatedAtUtc = now
             });
             Audit(userId, wallet.Id, request.Id, "Wallet.WithdrawalRequested", now);
-            Notify(userId, $"Yêu cầu rút {amount:N0}đ đã được ghi nhận, đang chờ Admin duyệt.", now);
+            Notify(userId, $"Yêu cầu rút {amount:N0} VNĐ đã được ghi nhận, đang chờ quản trị viên duyệt.", now);
             foreach (var adminId in await repository.AdminUserIdsAsync(ct))
                 if (adminId != userId) Notify(adminId, $"Có yêu cầu rút ví {request.Id} cần xét duyệt.", now);
             await repository.SaveAsync(ct);
@@ -102,14 +108,14 @@ public sealed class WalletService(IWalletWithdrawalRepository repository, IAdmin
         return await repository.InTransactionAsync(async () =>
         {
             var request = await repository.WithdrawalAsync(requestId, ct) ??
-                throw new KeyNotFoundException("Withdrawal request not found.");
+                throw new KeyNotFoundException("Không tìm thấy yêu cầu rút tiền.");
             var wallet = await repository.WalletByIdAsync(request.WalletId, ct) ??
-                throw new KeyNotFoundException("Wallet not found.");
+                throw new KeyNotFoundException("Không tìm thấy ví ký gửi.");
             var now = clock.GetUtcNow().UtcDateTime;
             if (approve)
             {
                 request.Approve(adminId, now);
-                Notify(wallet.UserId, $"Yêu cầu rút {request.Amount:N0}đ đã được duyệt; chưa xác nhận chuyển khoản ngân hàng.", now);
+                Notify(wallet.UserId, $"Yêu cầu rút {request.Amount:N0} VNĐ đã được duyệt; chưa xác nhận chuyển khoản ngân hàng.", now);
             }
             else
             {
@@ -120,10 +126,41 @@ public sealed class WalletService(IWalletWithdrawalRepository repository, IAdmin
                     Id = Guid.NewGuid(), WalletId = wallet.Id, WithdrawalRequestId = request.Id,
                     Amount = request.Amount, Type = "WithdrawalReleased", CreatedAtUtc = now
                 });
-                Notify(wallet.UserId, $"Yêu cầu rút {request.Amount:N0}đ bị từ chối; tiền đã trở lại số dư khả dụng.", now);
+                Notify(wallet.UserId, $"Yêu cầu rút {request.Amount:N0} VNĐ bị từ chối; tiền đã trở lại số dư khả dụng.", now);
             }
             Audit(adminId, wallet.Id, request.Id,
                 approve ? "Wallet.WithdrawalApproved" : "Wallet.WithdrawalRejected", now);
+            await repository.SaveAsync(ct);
+            return ToDto(request);
+        }, ct);
+    }
+
+    public async Task<WithdrawalDto> ConfirmTransferAsync(string adminId, Guid requestId,
+        string transferReference, CancellationToken ct)
+    {
+        await permissions.EnsureAsync(adminId, StaffPermissions.ManageWallets, ct);
+        if (requestId == Guid.Empty || string.IsNullOrWhiteSpace(transferReference) ||
+            transferReference.Trim().Length is < 4 or > 100)
+            throw new ArgumentException("Cần yêu cầu rút tiền và mã giao dịch chuyển khoản hợp lệ.");
+        var reference = transferReference.Trim();
+        return await repository.InTransactionAsync(async () =>
+        {
+            var request = await repository.WithdrawalAsync(requestId, ct) ??
+                throw new KeyNotFoundException("Không tìm thấy yêu cầu rút tiền.");
+            if (request.Status == "Transferred" && request.TransferReference == reference)
+                return ToDto(request); // Safe retry after a successful bank transfer confirmation.
+            var wallet = await repository.WalletByIdAsync(request.WalletId, ct) ??
+                throw new KeyNotFoundException("Không tìm thấy ví ký gửi.");
+            var now = clock.GetUtcNow().UtcDateTime;
+            request.ConfirmTransferred(adminId, reference, now);
+            repository.AddTransaction(new WalletTransaction
+            {
+                Id = Guid.NewGuid(), WalletId = wallet.Id, WithdrawalRequestId = request.Id,
+                Amount = 0, Type = "WithdrawalSettled", CreatedAtUtc = now
+            });
+            Audit(adminId, wallet.Id, request.Id, "Wallet.WithdrawalTransferred", now);
+            Notify(wallet.UserId,
+                $"CoCo đã xác nhận chuyển {request.Amount:N0} VNĐ tới {request.BankName}, tài khoản {request.BankAccountMasked}. Mã giao dịch: {reference}.", now);
             await repository.SaveAsync(ct);
             return ToDto(request);
         }, ct);
@@ -141,5 +178,7 @@ public sealed class WalletService(IWalletWithdrawalRepository repository, IAdmin
             Id = Guid.NewGuid(), UserId = userId, Category = "Wallets", Message = message, CreatedAtUtc = now
         });
     private static WithdrawalDto ToDto(WithdrawalRequest request) => new(request.Id, request.Amount,
-        request.BankAccountMasked, request.Status, request.CreatedAtUtc, request.DecidedAtUtc, request.DecisionReason);
+        request.BankAccountNumber ?? request.BankAccountMasked, request.Status, request.CreatedAtUtc,
+        request.DecidedAtUtc, request.DecisionReason, request.BankName, request.TransferredAtUtc,
+        request.TransferReference);
 }

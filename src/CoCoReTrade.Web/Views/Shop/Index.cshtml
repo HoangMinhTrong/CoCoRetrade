@@ -1,20 +1,30 @@
-@model IReadOnlyList<ProductCard>
-@{ ViewData["Title"] = "Khám phá"; var f = (ProductFilter)ViewBag.Filter; }
-<div class="eyebrow mt-4">Khám phá CoCo</div><h1 class="page-title mt-1">Tìm món đồ dành cho bạn</h1><p class="subtitle">Chỉ những sản phẩm đã được kiểm định mới xuất hiện tại đây.</p>
-<form method="get" class="panel mb-4">
-    <div class="row g-2">
-        <div class="col-12 col-md-5"><label class="form-label" for="Search">Tìm kiếm</label><input class="form-control" id="Search" name="Search" value="@f.Search" placeholder="Tên món, thương hiệu, mã SKU" /></div>
-        <div class="col-6 col-md-2"><label class="form-label" for="Category">Danh mục</label><select class="form-select" id="Category" name="Category"><option value="">Tất cả</option><option>Áo</option><option>Quần</option><option>Đầm/Váy</option><option>Túi</option><option>Phụ kiện</option></select></div>
-        <div class="col-6 col-md-2"><label class="form-label" for="Size">Size</label><select class="form-select" id="Size" name="Size"><option value="">Tất cả</option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>Free size</option></select></div>
-        <div class="col-12 col-md-3"><label class="form-label" for="Sort">Sắp xếp</label><select class="form-select" id="Sort" name="Sort"><option value="newest">Mới nhất</option><option value="price_asc">Giá tăng dần</option><option value="price_desc">Giá giảm dần</option><option value="popular">Được thích nhất</option></select></div>
-        <div class="col-6 col-md-3"><label class="form-label" for="Brand">Thương hiệu</label><input class="form-control" id="Brand" name="Brand" value="@f.Brand" placeholder="Ví dụ: Zara" /></div>
-        <div class="col-6 col-md-3"><label class="form-label" for="MinCondition">Độ mới từ</label><select class="form-select" id="MinCondition" name="MinCondition"><option value="">Bất kỳ</option><option value="90">90%</option><option value="95">95%</option><option value="99">99%</option></select></div>
-        <div class="col-6 col-md-3"><label class="form-label" for="Fulfillment">Nhận hàng</label><select class="form-select" id="Fulfillment" name="Fulfillment"><option value="">Bất kỳ</option><option value="pickup">Tới CoCo lấy</option><option value="shipping">Giao tận nơi</option></select></div>
-        <div class="col-6 col-md-2"><label class="form-label" for="MinPrice">Giá từ</label><input class="form-control" id="MinPrice" name="MinPrice" type="number" min="0" value="@f.MinPrice" placeholder="VNĐ" /></div>
-        <div class="col-6 col-md-2"><label class="form-label" for="MaxPrice">Đến</label><input class="form-control" id="MaxPrice" name="MaxPrice" type="number" min="0" value="@f.MaxPrice" placeholder="VNĐ" /></div>
-        <div class="col-12 col-md-2 d-flex align-items-end"><button class="btn btn-wine w-100" type="submit">Lọc sản phẩm</button></div>
+﻿@model IReadOnlyList<ProductCard>
+@{
+    ViewData["Title"] = "Khám phá";
+    var f = (ProductFilter)ViewBag.Filter;
+    var hasFilters = !string.IsNullOrWhiteSpace(f.Category) || !string.IsNullOrWhiteSpace(f.Brand) || !string.IsNullOrWhiteSpace(f.Size)
+        || f.MinPrice.HasValue || f.MaxPrice.HasValue || f.MinCondition.HasValue || !string.IsNullOrWhiteSpace(f.Fulfillment);
+}
+<div class="page-heading"><div><span class="eyebrow">Tủ đồ tuyển chọn</span><h1 class="page-title">Tìm thấy món hợp gu</h1><p class="subtitle mb-0">Những món đồ độc bản, đã được CoCo kiểm định.</p></div></div>
+<form method="get" class="panel shop-toolbar mb-4">
+    <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-7"><label class="form-label" for="Search">Bạn đang tìm gì?</label><div class="search-field"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#search" /></svg><input class="form-control" id="Search" name="Search" value="@f.Search" placeholder="Tên món đồ, thương hiệu hoặc mã SKU" /></div></div>
+        <div class="col-7 col-md-3"><label class="form-label" for="Sort">Sắp xếp theo</label><select class="form-select" id="Sort" name="Sort"><option value="newest" selected="@(f.Sort == "newest")">Mới nhất</option><option value="price_asc" selected="@(f.Sort == "price_asc")">Giá tăng dần</option><option value="price_desc" selected="@(f.Sort == "price_desc")">Giá giảm dần</option><option value="popular" selected="@(f.Sort == "popular")">Được yêu thích nhất</option></select></div>
+        <div class="col-5 col-md-2"><button class="btn btn-wine w-100" type="submit">Tìm kiếm</button></div>
     </div>
+    <details class="shop-filters" open="@hasFilters">
+        <summary><span><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#filter" /></svg> Bộ lọc chi tiết</span><span class="small text-muted">Danh mục, kích cỡ, giá…</span></summary>
+        <div class="row g-3 pt-3">
+            <div class="col-6 col-lg-3"><label class="form-label" for="Category">Danh mục</label><select class="form-select" id="Category" name="Category"><option value="">Tất cả danh mục</option>@foreach (var category in new[] { "Áo", "Quần", "Đầm/Váy", "Túi", "Phụ kiện" }) { <option value="@category" selected="@(f.Category == category)">@category</option> }</select></div>
+            <div class="col-6 col-lg-3"><label class="form-label" for="Size">Kích cỡ</label><select class="form-select" id="Size" name="Size"><option value="">Tất cả kích cỡ</option>@foreach (var size in new[] { "XS", "S", "M", "L", "XL", "Free size" }) { <option value="@size" selected="@(f.Size == size)">@UiText.For(size)</option> }</select></div>
+            <div class="col-6 col-lg-3"><label class="form-label" for="Brand">Thương hiệu</label><input class="form-control" id="Brand" name="Brand" value="@f.Brand" placeholder="Ví dụ: Zara, Uniqlo" /></div>
+            <div class="col-6 col-lg-3"><label class="form-label" for="MinCondition">Độ mới từ</label><select class="form-select" id="MinCondition" name="MinCondition"><option value="">Tất cả tình trạng</option>@foreach (var condition in new[] { 90, 95, 99 }) { <option value="@condition" selected="@(f.MinCondition == condition)">@condition%</option> }</select></div>
+            <div class="col-6 col-lg-3"><label class="form-label" for="MinPrice">Giá từ (VNĐ)</label><input class="form-control" id="MinPrice" name="MinPrice" type="number" min="0" value="@f.MinPrice" placeholder="0" /></div>
+            <div class="col-6 col-lg-3"><label class="form-label" for="MaxPrice">Giá đến (VNĐ)</label><input class="form-control" id="MaxPrice" name="MaxPrice" type="number" min="0" value="@f.MaxPrice" placeholder="Không giới hạn" /></div>
+            <div class="col-12 col-lg-3"><label class="form-label" for="Fulfillment">Cách nhận hàng</label><select class="form-select" id="Fulfillment" name="Fulfillment"><option value="">Tất cả hình thức</option><option value="pickup" selected="@(f.Fulfillment == "pickup")">Lấy tại CoCo</option><option value="shipping" selected="@(f.Fulfillment == "shipping")">Giao tận nơi</option></select></div>
+            <div class="col-12 col-lg-3 d-flex align-items-end gap-2"><button class="btn btn-wine flex-grow-1" type="submit">Áp dụng</button><a class="btn btn-outline-wine" asp-action="Index">Đặt lại</a></div>
+        </div>
+    </details>
 </form>
-<div class="section-heading"><h2>@Model.Count sản phẩm</h2></div>
+<div class="section-heading shop-results"><div><h2>@Model.Count sản phẩm</h2>@if (!string.IsNullOrWhiteSpace(f.Search)) { <p>Kết quả cho “@f.Search”</p> }</div>@if (hasFilters || !string.IsNullOrWhiteSpace(f.Search)) { <a class="text-link" asp-action="Index">Xóa bộ lọc</a> }</div>
 <partial name="_ProductGrid" model="Model" />
-@section Scripts { <script>for(const k of ['Category','Size','Sort','MinCondition','Fulfillment']){const el=document.getElementById(k);const v=new URLSearchParams(location.search).get(k);if(v)el.value=v}</script> }

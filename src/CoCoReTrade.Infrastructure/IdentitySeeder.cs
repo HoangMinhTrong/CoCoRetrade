@@ -36,11 +36,11 @@ public static class IdentitySeeder
         {
             var password = Environment.GetEnvironmentVariable("COCO_ADMIN_INITIAL_PASSWORD") ?? configuration["Admin:InitialPassword"];
             if (string.IsNullOrWhiteSpace(password))
-                throw new InvalidOperationException("Set COCO_ADMIN_INITIAL_PASSWORD or the Admin:InitialPassword development secret before first run.");
+                throw new InvalidOperationException("Hãy cấu hình COCO_ADMIN_INITIAL_PASSWORD hoặc bí mật phát triển Admin:InitialPassword trước lần chạy đầu.");
             admin = new ApplicationUser { UserName = email, Email = email, EmailConfirmed = true,
                 PhoneNumber = "0905123456", PhoneNumberConfirmed = true, FullName = "CoCo Admin", MustChangePassword = true };
             var result = await users.CreateAsync(admin, password);
-            if (!result.Succeeded) throw new InvalidOperationException("Cannot seed admin: " + string.Join("; ", result.Errors.Select(x => x.Description)));
+            if (!result.Succeeded) throw new InvalidOperationException("Không thể tạo quản trị viên ban đầu: " + string.Join("; ", result.Errors.Select(x => x.Description)));
         }
         await EnsureAdminRolesAsync(users, admin);
 
@@ -59,7 +59,7 @@ public static class IdentitySeeder
             };
             var result = await users.CreateAsync(additionalAdmin, additionalPassword);
             if (!result.Succeeded)
-                throw new InvalidOperationException("Cannot seed admin1: " + string.Join("; ", result.Errors.Select(x => x.Description)));
+                throw new InvalidOperationException("Không thể tạo tài khoản admin1: " + string.Join("; ", result.Errors.Select(x => x.Description)));
             await EnsureAdminRolesAsync(users, additionalAdmin);
         }
         else if (additionalAdmin is not null)
@@ -67,7 +67,7 @@ public static class IdentitySeeder
             if (!await users.IsInRoleAsync(additionalAdmin, "Admin"))
             {
                 if (!string.IsNullOrWhiteSpace(additionalPassword))
-                    throw new InvalidOperationException("admin1 email already belongs to a non-admin account; refusing automatic promotion.");
+                    throw new InvalidOperationException("Email của admin1 đã thuộc về tài khoản không phải quản trị viên; không tự cấp quyền.");
             }
             else await EnsureAdminRolesAsync(users, additionalAdmin);
         }
@@ -82,7 +82,7 @@ public static class IdentitySeeder
             };
             var result = await users.CreateAsync(system);
             if (!result.Succeeded)
-                throw new InvalidOperationException("Cannot seed system actor: " + string.Join("; ", result.Errors.Select(x => x.Description)));
+                throw new InvalidOperationException("Không thể tạo tài khoản hệ thống: " + string.Join("; ", result.Errors.Select(x => x.Description)));
         }
     }
 
@@ -93,7 +93,7 @@ public static class IdentitySeeder
             if (await users.IsInRoleAsync(admin, role)) continue;
             var result = await users.AddToRoleAsync(admin, role);
             if (!result.Succeeded)
-                throw new InvalidOperationException("Cannot assign admin role: " + string.Join("; ", result.Errors.Select(x => x.Description)));
+                throw new InvalidOperationException("Không thể cấp vai trò quản trị viên: " + string.Join("; ", result.Errors.Select(x => x.Description)));
         }
     }
 }

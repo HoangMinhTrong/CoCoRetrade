@@ -9,13 +9,13 @@ public sealed class StaffPermissionChecker(UserManager<ApplicationUser> users, R
 {
     public async Task EnsureAsync(string actorId, string permission, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(actorId)) throw new UnauthorizedAccessException("Sign in is required.");
+        if (string.IsNullOrWhiteSpace(actorId)) throw new UnauthorizedAccessException("Hãy đăng nhập.");
         var user = await users.FindByIdAsync(actorId);
         if (user is null || user.TrustSuspended || user.LockoutEnd > DateTimeOffset.UtcNow)
-            throw new UnauthorizedAccessException("Account is unavailable.");
+            throw new UnauthorizedAccessException("Tài khoản không khả dụng.");
         var userRoles = await users.GetRolesAsync(user);
         if (!userRoles.Any(x => StaffPermissions.RequiredRoles(permission).Contains(x)))
-            throw new UnauthorizedAccessException("This account does not have the required staff role.");
+            throw new UnauthorizedAccessException("Tài khoản này không có vai trò nhân viên cần thiết.");
         if ((await users.GetClaimsAsync(user)).Any(x => x.Type == StaffPermissions.ClaimType && x.Value == permission)) return;
         foreach (var roleName in userRoles)
         {
@@ -23,6 +23,6 @@ public sealed class StaffPermissionChecker(UserManager<ApplicationUser> users, R
             if (role is not null && (await roles.GetClaimsAsync(role)).Any(x => x.Type == StaffPermissions.ClaimType && x.Value == permission))
                 return;
         }
-        throw new UnauthorizedAccessException("This account does not have the required permission.");
+        throw new UnauthorizedAccessException("Tài khoản này không có quyền thực hiện thao tác.");
     }
 }

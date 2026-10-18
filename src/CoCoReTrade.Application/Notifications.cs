@@ -19,7 +19,7 @@ public sealed class NotificationService(INotificationRepository repository, Time
         Guid? offerId, Guid? orderId, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(category) ||
-            string.IsNullOrWhiteSpace(message)) throw new ArgumentException("Notification details are required.");
+            string.IsNullOrWhiteSpace(message)) throw new ArgumentException("Cần nhập nội dung thông báo.");
         var notification = new MarketplaceNotification
         {
             Id = Guid.NewGuid(), UserId = userId, Category = category.Trim(), Message = message.Trim(),

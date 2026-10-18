@@ -40,7 +40,7 @@ public sealed class AccountOtpService(AppDbContext db, UserManager<ApplicationUs
         db.AccountOtps.Add(otp);
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
-        return new IssuedAccountOtp(user.Email ?? throw new InvalidOperationException("Email is required."), code);
+        return new IssuedAccountOtp(user.Email ?? throw new InvalidOperationException("Tài khoản chưa có email."), code);
     }
 
     private async Task<AccountActionResult> VerifyAsync(string userId, string code, string purpose, CancellationToken ct)

@@ -102,7 +102,7 @@ public sealed class ConversationService(IConversationRepository repository, Time
             {
                 Id = Guid.NewGuid(), UserId = actorId == conversation.BuyerId ? conversation.SellerId : conversation.BuyerId,
                 Category = "Messages", Message = $"Bạn có tin nhắn mới về {conversation.ProductSku}.",
-                CreatedAtUtc = now
+                ConversationId = conversation.Id, ProductId = conversation.ProductId, CreatedAtUtc = now
             });
             await repository.SaveAsync(ct);
             return (Message: new ConversationMessageDto(item.Id, item.SenderId, item.Body, item.CreatedAtUtc, false),

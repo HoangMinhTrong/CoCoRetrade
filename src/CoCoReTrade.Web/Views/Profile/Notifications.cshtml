@@ -1,6 +1,36 @@
-@model IReadOnlyList<NotificationDto>
-@{ ViewData["Title"] = "Thông báo"; }
-<div class="eyebrow mt-4">Cập nhật CoCo</div><h1 class="page-title mt-1">Thông báo</h1>
-<nav class="d-flex flex-wrap gap-2 mb-3" aria-label="Nhóm thông báo"><a class="btn btn-sm @((string?)ViewBag.Group is null ? "btn-wine" : "btn-outline-wine")" asp-action="Notifications">Tất cả</a><a class="btn btn-sm @((string?)ViewBag.Group == "transactions" ? "btn-wine" : "btn-outline-wine")" asp-action="Notifications" asp-route-group="transactions">Giao dịch & Offer</a><a class="btn btn-sm @((string?)ViewBag.Group == "listings" ? "btn-wine" : "btn-outline-wine")" asp-action="Notifications" asp-route-group="listings">Sản phẩm</a><a class="btn btn-sm @((string?)ViewBag.Group == "social" ? "btn-wine" : "btn-outline-wine")" asp-action="Notifications" asp-route-group="social">Tương tác</a></nav>
-@if (Model.Count == 0) { <div class="empty-state mt-4"><div class="empty-icon">✉</div><h2 class="display-serif">Chưa có thông báo</h2><p>Hoạt động trả giá sẽ xuất hiện tại đây.</p></div> }
-else { <div class="row g-2 mt-3 mb-5">@foreach (var item in Model) { <div class="col-12"><div class="panel py-3 d-flex justify-content-between align-items-center gap-3"><div><div class="eyebrow">@(item.IsRead ? "Đã đọc" : "● Mới") · @item.Category · @item.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</div><p class="mb-0 mt-1">@item.Message</p></div><div class="d-flex flex-column gap-2">@if (item.OfferId.HasValue) { <a asp-controller="Offers" asp-action="Details" asp-route-id="@item.OfferId">Xem →</a> } else if (item.OrderId.HasValue) { <a asp-controller="Orders" asp-action="Details" asp-route-id="@item.OrderId">Xem →</a> }@if (!item.IsRead) { <form asp-action="ReadNotification" method="post"><input type="hidden" name="id" value="@item.Id" /><button type="submit" class="btn btn-outline-wine btn-sm">Đánh dấu đã đọc</button></form> }</div></div></div> }</div> }
+﻿@model IReadOnlyList<NotificationDto>
+@{
+    ViewData["Title"] = "Thông báo";
+    var group = (string?)ViewBag.Group;
+    var unreadCount = Model.Count(x => !x.IsRead);
+}
+<div class="page-heading"><div><span class="eyebrow">Cập nhật dành cho bạn</span><h1 class="page-title">Thông báo</h1><p class="subtitle mb-0">Theo dõi tin mới và mở nhanh nội dung liên quan.</p></div>@if (unreadCount > 0) { <span class="status-pill notification-count">@unreadCount chưa đọc trong mục này</span> }</div>
+<nav class="notification-tabs category-chips mb-3" aria-label="Nhóm thông báo">
+    <a class="@(group is null ? "is-active" : "")" asp-action="Notifications" aria-current="@(group is null ? "page" : null)">Tất cả</a>
+    <a class="@(group == "transactions" ? "is-active" : "")" asp-action="Notifications" asp-route-group="transactions" aria-current="@(group == "transactions" ? "page" : null)">Giao dịch và trả giá</a>
+    <a class="@(group == "listings" ? "is-active" : "")" asp-action="Notifications" asp-route-group="listings" aria-current="@(group == "listings" ? "page" : null)">Sản phẩm</a>
+    <a class="@(group == "social" ? "is-active" : "")" asp-action="Notifications" asp-route-group="social" aria-current="@(group == "social" ? "page" : null)">Tương tác</a>
+</nav>
+@if (Model.Count == 0)
+{
+    <div class="empty-state"><div class="empty-icon"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#bell" /></svg></div><h2>Chưa có thông báo trong mục này</h2><p>Cập nhật về đơn hàng, đề xuất giá và sản phẩm sẽ xuất hiện tại đây.</p><a class="btn btn-outline-wine mt-2" asp-controller="Shop" asp-action="Index">Tiếp tục khám phá</a></div>
+}
+else
+{
+    <div class="notification-list d-grid gap-3">
+        @foreach (var item in Model)
+        {
+            <article class="panel notification-item @(item.IsRead ? "" : "is-unread") d-flex gap-3">
+                <span class="notification-symbol flex-shrink-0" aria-hidden="true"><svg class="icon"><use href="/images/icons.svg#bell" /></svg></span>
+                <div class="flex-grow-1">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2"><span class="small fw-semibold">@UiText.For(item.Category)</span><span class="small text-muted">@item.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy · HH:mm")</span>@if (!item.IsRead) { <span class="status-pill notification-new">Mới</span> }</div>
+                    <p class="mb-2">@item.Message</p>
+                    <div class="d-flex flex-wrap align-items-center gap-3">
+                        @if (item.HasDestination) { <a class="text-link" asp-action="OpenNotification" asp-route-id="@item.Id">Xem chi tiết <svg class="icon" aria-hidden="true"><use href="/images/icons.svg#arrow-right" /></svg></a> }
+                        @if (!item.IsRead) { <form asp-action="ReadNotification" method="post"><input type="hidden" name="id" value="@item.Id" /><button type="submit" class="btn btn-link small text-muted p-0">Đánh dấu đã đọc</button></form> }
+                    </div>
+                </div>
+            </article>
+        }
+    </div>
+}

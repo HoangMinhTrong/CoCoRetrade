@@ -1,41 +1,104 @@
 @model IReadOnlyList<AdminWalletRow>
-@{ ViewData["Title"] = "Quản lý ví"; var withdrawals = (IReadOnlyList<AdminWithdrawalRow>)ViewBag.Withdrawals; var candidates = (IReadOnlyList<SellerPayoutCandidate>)ViewBag.Candidates; }
-<div class="eyebrow mt-4">CoCo Backoffice</div><h1 class="page-title mt-1">Ví ký gửi</h1>
-<p class="subtitle">Đối chiếu số dư, giao dịch và yêu cầu rút. Chỉ đơn đã thanh toán và hoàn tất mới được ghi có ví người bán.</p>
-<h2 class="display-serif fs-4 mt-4">Tiền bán hàng chờ ghi có</h2>
-<div class="row g-3 mb-4">
-@foreach (var candidate in candidates)
-{
-    <div class="col-12 col-lg-6"><div class="panel h-100">
-        <div class="eyebrow">@candidate.ProductSku · @candidate.SellerName</div>
-        <div class="spec-row"><span>Tiền hàng</span><strong>@candidate.MerchandiseAmount.ToString("N0") đ</strong></div>
-        <div class="spec-row"><span>Hoa hồng CoCo</span><strong>@candidate.CommissionAmount.ToString("N0") đ</strong></div>
-        <div class="spec-row"><span>Ghi có người bán</span><strong>@candidate.NetAmount.ToString("N0") đ</strong></div>
-        <form asp-action="Credit" method="post" class="mt-3"><input type="hidden" name="orderId" value="@candidate.OrderId" />
-            <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="confirmed" value="true" id="credit-@candidate.OrderId" required />
-                <label class="form-check-label" for="credit-@candidate.OrderId">Đã đối soát đơn hoàn tất và thanh toán.</label></div>
-            <button class="btn btn-wine btn-sm" type="submit">Ghi có ví</button></form>
-    </div></div>
+@{
+    ViewData["Title"] = "Quản lý ví";
+    var withdrawals = (IReadOnlyList<AdminWithdrawalRow>)ViewBag.Withdrawals;
+    var candidates = (IReadOnlyList<SellerPayoutCandidate>)ViewBag.Candidates;
 }
-@if (candidates.Count == 0) { <div class="col-12"><p class="text-muted">Không có đơn chờ ghi có.</p></div> }
-</div>
-<div class="panel table-responsive mb-4"><table class="table align-middle mb-0"><thead><tr><th>Chủ ví</th><th>Email</th><th>Số dư</th><th>Giao dịch</th><th></th></tr></thead><tbody>
-@foreach (var w in Model)
-{ <tr><td>@w.OwnerName</td><td>@w.OwnerEmail</td><td>@w.Balance.ToString("N0") đ</td><td>@w.TransactionCount</td><td><a asp-action="Details" asp-route-id="@w.Id">Xem</a></td></tr> }
-</tbody></table>@if (Model.Count == 0) { <p class="text-muted my-3">Chưa có ví.</p> }</div>
-<h2 class="display-serif fs-4">Yêu cầu rút tiền</h2>
-<div class="panel table-responsive mb-5"><table class="table align-middle mb-0"><thead><tr><th>Người dùng</th><th>Số tiền</th><th>Tài khoản</th><th>Trạng thái</th><th>Xử lý</th></tr></thead><tbody>
-@foreach (var r in withdrawals)
-{ <tr><td>@r.OwnerName</td><td>@r.Amount.ToString("N0") đ</td><td>@r.BankAccountMasked</td><td>@r.Status</td>
-    <td>@if (r.Status == "Pending")
+<header class="admin-page-header"><div><div class="eyebrow">Tài chính CoCo</div><h1 class="page-title">Ví & rút tiền</h1><p class="subtitle mb-0">Đối soát tiền bán hàng, quản lý số dư và chuyển tiền cho người ký gửi.</p></div><a class="btn btn-outline-wine" asp-area="Admin" asp-controller="Reports" asp-action="Revenue"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#chart" /></svg> Báo cáo doanh thu</a></header>
+<nav class="d-flex flex-wrap gap-2 mb-4" aria-label="Các mục quản lý ví"><a class="btn btn-outline-wine btn-sm" href="#withdrawals">Yêu cầu rút tiền (@withdrawals.Count)</a><a class="btn btn-outline-wine btn-sm" href="#reconciliation">Đối soát (@candidates.Count)</a><a class="btn btn-outline-wine btn-sm" href="#wallets">Danh sách ví (@Model.Count)</a></nav>
+
+<section id="withdrawals" class="mb-5">
+    <div class="admin-section-heading"><h2 class="fs-4 mb-1">Yêu cầu rút tiền</h2><p class="small text-muted mb-0">Duyệt yêu cầu, thực hiện chuyển khoản rồi xác nhận bằng mã giao dịch.</p></div>
+    @if (withdrawals.Count == 0)
+    {
+        <div class="panel empty-state"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#wallet" /></svg><h3 class="fs-5 mt-3">Chưa có yêu cầu rút tiền</h3><p class="mb-0">Yêu cầu từ người ký gửi sẽ được hiển thị tại đây.</p></div>
+    }
+    else
+    {
+        <div class="row g-3">
+        @foreach (var r in withdrawals)
         {
-            <form asp-action="DecideWithdrawal" method="post" class="d-flex flex-wrap gap-2">
-                <input type="hidden" name="id" value="@r.Id" />
-                <button class="btn btn-sm btn-wine" name="approve" value="true" type="submit">Duyệt</button>
-                <input class="form-control form-control-sm" style="max-width:180px" name="reason" placeholder="Lý do từ chối" />
-                <button class="btn btn-sm btn-outline-danger" name="approve" value="false" type="submit">Từ chối</button>
-            </form>
+            <div class="col-12 col-xl-6"><article class="panel admin-record-card h-100">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3"><h3 class="fs-5 mb-0">@r.OwnerName</h3><span class="admin-status @(r.Status == "Transferred" ? "admin-status--success" : r.Status is "Pending" or "Approved" ? "admin-status--warning" : "admin-status--muted")">@(r.Status == "Transferred" ? "Đã chuyển tiền" : r.Status == "Approved" ? "Đã duyệt, chờ chuyển" : r.Status == "Rejected" ? "Đã từ chối" : "Chờ duyệt")</span></div>
+                <div class="admin-metric-value fs-3">@r.Amount.ToString("N0") <span class="fs-6">VNĐ</span></div>
+                <div class="spec-row"><span>Ngân hàng</span><strong>@(r.BankName ?? "Chưa có thông tin")</strong></div>
+                <div class="spec-row"><span>Số tài khoản</span><strong class="admin-code text-break">@r.BankAccountNumber</strong></div>
+                @if (r.TransferredAtUtc.HasValue)
+                {
+                    <div class="small text-muted mt-3">Đã chuyển lúc @r.TransferredAtUtc.Value.AddHours(7).ToString("dd/MM/yyyy HH:mm")<br />Mã giao dịch: <span class="text-break">@r.TransferReference</span></div>
+                }
+                @if (r.Status is "Pending" or "Approved")
+                {
+                    <div class="border-top pt-3 mt-3">
+                        @if (r.Status == "Pending" && r.BankName is not null && !r.BankAccountNumber.Contains('*'))
+                        {
+                            <form asp-action="DecideWithdrawal" method="post" class="mb-3"><input type="hidden" name="id" value="@r.Id" /><button class="btn btn-wine w-100" name="approve" value="true" type="submit">Duyệt yêu cầu rút tiền</button></form>
+                        }
+                        @if (r.Status == "Pending" && r.BankName is null)
+                        {
+                            <p class="small text-muted">Yêu cầu cũ thiếu thông tin ngân hàng. Từ chối để người bán có thể gửi lại đầy đủ thông tin.</p>
+                        }
+                        @if (r.Status == "Approved" && r.BankName is not null && !r.BankAccountNumber.Contains('*'))
+                        {
+                            <form asp-action="ConfirmTransfer" method="post" class="mb-3">
+                                <input type="hidden" name="id" value="@r.Id" />
+                                <label class="form-label" for="reference-@r.Id">Mã giao dịch sau khi chuyển khoản</label>
+                                <input id="reference-@r.Id" name="transferReference" class="form-control mb-3" minlength="4" maxlength="100" required autocomplete="off" placeholder="Nhập mã giao dịch từ ngân hàng" />
+                                <div class="form-check mb-3"><input id="confirm-@r.Id" class="form-check-input" type="checkbox" name="confirmed" value="true" required /><label for="confirm-@r.Id" class="form-check-label small">Tôi đã kiểm tra chuyển khoản thành công</label></div>
+                                <button class="btn btn-wine w-100" type="submit">Xác nhận đã chuyển tiền</button>
+                            </form>
+                        }
+                        <details><summary class="small fw-semibold">Từ chối yêu cầu</summary><form asp-action="DecideWithdrawal" method="post" class="mt-3">
+                            <input type="hidden" name="id" value="@r.Id" /><input type="hidden" name="approve" value="false" />
+                            <label class="form-label small" for="reject-@r.Id">Lý do gửi người bán</label><input id="reject-@r.Id" class="form-control form-control-sm" name="reason" placeholder="Nhập lý do từ chối" minlength="3" maxlength="1000" required />
+                            <button class="btn btn-sm btn-outline-danger mt-2" type="submit">Từ chối và hoàn tiền vào ví</button>
+                        </form></details>
+                    </div>
+                }
+            </article></div>
         }
-        else if (r.Status == "Approved") { <span class="small text-muted">Chờ chuyển khoản thực tế</span> }
-    </td></tr> }
-</tbody></table>@if (withdrawals.Count == 0) { <p class="text-muted my-3">Chưa có yêu cầu.</p> }</div>
+        </div>
+    }
+</section>
+
+<section id="reconciliation" class="mb-5">
+    <div class="admin-section-heading"><h2 class="fs-4 mb-1">Đối soát đơn chưa ghi có</h2><p class="small text-muted mb-0">Chỉ ghi có khi đơn hàng đã thanh toán và hoàn tất giao nhận.</p></div>
+    <div class="row g-3">
+    @foreach (var candidate in candidates)
+    {
+        <div class="col-12 col-lg-6"><div class="panel h-100">
+            <div class="d-flex justify-content-between flex-wrap gap-2 mb-3"><span class="admin-code">@candidate.ProductSku</span><strong>@candidate.SellerName</strong></div>
+            <div class="spec-row"><span>Tiền hàng</span><strong>@candidate.MerchandiseAmount.ToString("N0") VNĐ</strong></div>
+            <div class="spec-row"><span>Hoa hồng CoCo</span><strong>@candidate.CommissionAmount.ToString("N0") VNĐ</strong></div>
+            <div class="spec-row"><span>Ghi có người bán</span><strong>@candidate.NetAmount.ToString("N0") VNĐ</strong></div>
+            <form asp-action="Credit" method="post" class="mt-3"><input type="hidden" name="orderId" value="@candidate.OrderId" />
+                <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="confirmed" value="true" id="credit-@candidate.OrderId" required /><label class="form-check-label small" for="credit-@candidate.OrderId">Đã đối soát đơn hoàn tất và thanh toán.</label></div>
+                <button class="btn btn-wine w-100" type="submit">Ghi có vào ví người bán</button>
+            </form>
+        </div></div>
+    }
+    @if (candidates.Count == 0)
+    {
+        <div class="col-12"><div class="panel d-flex align-items-center gap-3"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#check" /></svg><div><strong>Không có đơn chờ ghi có</strong><p class="small text-muted mb-0">Các khoản đủ điều kiện đã được xử lý.</p></div></div></div>
+    }
+    </div>
+</section>
+
+<section id="wallets" class="mb-5">
+    <div class="admin-section-heading"><h2 class="fs-4 mb-1">Danh sách ví</h2><p class="small text-muted mb-0">Mở chi tiết để xem sổ giao dịch của từng người ký gửi.</p></div>
+    <div class="panel">
+    @if (Model.Count == 0)
+    {
+        <p class="text-muted mb-0">Chưa có ví ký gửi.</p>
+    }
+    else
+    {
+        <div class="table-responsive"><table class="table admin-table align-middle mb-0"><caption class="visually-hidden">Số dư và giao dịch các ví ký gửi</caption><thead><tr><th scope="col">Chủ ví</th><th scope="col">Email</th><th scope="col" class="text-end">Số dư</th><th scope="col" class="text-end">Giao dịch</th><th scope="col"><span class="visually-hidden">Thao tác</span></th></tr></thead><tbody>
+        @foreach (var w in Model)
+        {
+            <tr><td><strong>@w.OwnerName</strong></td><td class="text-muted text-break">@w.OwnerEmail</td><td class="text-end text-nowrap fw-semibold">@w.Balance.ToString("N0") VNĐ</td><td class="text-end">@w.TransactionCount</td><td class="text-end"><a class="btn btn-outline-wine btn-sm text-nowrap" asp-action="Details" asp-route-id="@w.Id">Chi tiết →</a></td></tr>
+        }
+        </tbody></table></div>
+    }
+    </div>
+</section>

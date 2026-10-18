@@ -25,6 +25,8 @@ public sealed class OrdersController(IAdminOrderService orders) : Controller
         Change(id, () => orders.CompleteAsync(id, AdminId, ct));
     [HttpPost] public Task<IActionResult> Cancel(Guid id, CancellationToken ct) =>
         Change(id, () => orders.CancelAsync(id, AdminId, ct));
+    [HttpPost] public Task<IActionResult> ReturnUndelivered(Guid id, bool itemReturnedToStore, CancellationToken ct) =>
+        Change(id, () => orders.ReturnUndeliveredAsync(id, AdminId, itemReturnedToStore, ct));
     private async Task<IActionResult> Change(Guid id, Func<Task<OrderDto>> action)
     {
         try { await action(); TempData["Message"] = "Đã cập nhật đơn hàng."; }

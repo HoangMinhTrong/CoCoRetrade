@@ -14,12 +14,13 @@ public sealed class CheckoutController(IOrderService orders, IProductService pro
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
     [HttpGet]
-    public async Task<IActionResult> Index(Guid productId, Guid? offerId, CancellationToken ct)
+    public async Task<IActionResult> Index(Guid productId, Guid? offerId, FulfillmentType? fulfillment, CancellationToken ct)
     {
         try
         {
             var form = new CheckoutForm { ProductId = productId, OfferId = offerId,
-                Fulfillment = shipping.CanPickup ? FulfillmentType.Pickup : FulfillmentType.Shipping };
+                Fulfillment = fulfillment == FulfillmentType.Shipping || !shipping.CanPickup
+                    ? FulfillmentType.Shipping : FulfillmentType.Pickup };
             await PrepareView(form, ct);
             return View(form);
         }

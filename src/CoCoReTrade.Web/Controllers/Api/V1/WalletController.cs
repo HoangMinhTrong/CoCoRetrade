@@ -14,6 +14,9 @@ public sealed class WalletController(IWalletService wallets) : ControllerBase
     [HttpGet]
     public async Task<ActionResult<WalletBalanceDto>> Balance(CancellationToken ct) =>
         Ok(await wallets.BalanceAsync(UserId, ct));
+    [HttpGet("withdrawals")]
+    public async Task<ActionResult<IReadOnlyList<WithdrawalDto>>> Withdrawals(CancellationToken ct) =>
+        Ok(await wallets.WithdrawalsAsync(UserId, ct));
     [HttpPost("withdrawals")]
     public async Task<ActionResult<WithdrawalDto>> RequestWithdrawal(
         [FromBody] CreateWithdrawalRequest request, CancellationToken ct)
@@ -21,7 +24,7 @@ public sealed class WalletController(IWalletService wallets) : ControllerBase
         try
         {
             var result = await wallets.RequestWithdrawalAsync(UserId, request.RequestKey,
-                request.Amount, request.BankAccountMasked, ct);
+                request.Amount, request.BankAccountNumber, request.BankName, ct);
             return Ok(result);
         }
         catch (ArgumentException ex) { return BadRequest(new { error = ex.Message }); }
@@ -29,4 +32,5 @@ public sealed class WalletController(IWalletService wallets) : ControllerBase
     }
 }
 
-public sealed record CreateWithdrawalRequest(Guid RequestKey, decimal Amount, string BankAccountMasked);
+public sealed record CreateWithdrawalRequest(Guid RequestKey, decimal Amount,
+    string BankAccountNumber, string BankName);

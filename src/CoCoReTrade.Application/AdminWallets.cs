@@ -4,9 +4,11 @@ namespace CoCoReTrade.Application;
 
 public sealed record AdminWalletRow(Guid Id, string UserId, string OwnerName, string OwnerEmail,
     decimal Balance, int TransactionCount);
-public sealed record AdminWalletTransaction(Guid Id, Guid? OrderId, decimal Amount, string Type, DateTime CreatedAtUtc);
+public sealed record AdminWalletTransaction(Guid Id, Guid? OrderId, decimal Amount, string Type, DateTime CreatedAtUtc,
+    Guid? WithdrawalRequestId = null);
 public sealed record AdminWithdrawalRow(Guid Id, Guid WalletId, string OwnerName, decimal Amount,
-    string BankAccountMasked, string Status);
+    string BankAccountNumber, string Status, string? BankName = null,
+    DateTime? TransferredAtUtc = null, string? TransferReference = null);
 public sealed record AdminWalletDetails(AdminWalletRow Wallet, IReadOnlyList<AdminWalletTransaction> Transactions,
     IReadOnlyList<AdminWithdrawalRow> Withdrawals);
 public sealed record SellerPayoutCandidate(Guid OrderId, string ProductSku, string SellerName,
@@ -37,7 +39,7 @@ public interface IAdminWalletService
     Task<AdminWalletDetails> CreditCompletedOrderAsync(string actorId, Guid orderId, bool confirmed, CancellationToken ct);
 }
 public sealed class AdminWalletService(IAdminWalletRepository repository, IStaffPermissionChecker permissions,
-    TimeProvider clock) : IAdminWalletService
+    TimeProvider clock, ISellerPayoutService? payouts = null) : IAdminWalletService
 {
     public async Task<IReadOnlyList<AdminWalletRow>> ListAsync(string actorId, CancellationToken ct)
     {
@@ -62,36 +64,15 @@ public sealed class AdminWalletService(IAdminWalletRepository repository, IStaff
     public async Task<AdminWalletDetails> CreditCompletedOrderAsync(string actorId, Guid orderId, bool confirmed, CancellationToken ct)
     {
         await permissions.EnsureAsync(actorId, StaffPermissions.ManageWallets, ct);
-        if (!confirmed || orderId == Guid.Empty) throw new ArgumentException("Confirm the completed and paid order before releasing seller proceeds.");
+        if (!confirmed || orderId == Guid.Empty) throw new ArgumentException("Hãy xác nhận đơn đã hoàn tất và thanh toán trước khi ghi có ví người bán.");
         var walletId = await repository.InTransactionAsync(async () =>
         {
-            var order = await repository.OrderAsync(orderId, ct) ?? throw new KeyNotFoundException("Order not found.");
-            if (order.Status != OrderStatus.Completed || order.PaymentStatus != PaymentStatus.Paid)
-                throw new InvalidOperationException("Only completed and paid orders can credit the seller wallet.");
-            if (await repository.HasSellerPayoutAsync(orderId, ct))
-                throw new InvalidOperationException("Seller proceeds were already released for this order.");
-            var proceeds = order.ItemAmount - order.CommissionAmount;
-            if (proceeds <= 0) throw new InvalidOperationException("The order has no positive seller proceeds.");
-            var wallet = await repository.WalletForUserAsync(order.SellerId, ct);
-            if (wallet is null)
-            {
-                wallet = new Wallet { Id = Guid.NewGuid(), UserId = order.SellerId };
-                repository.AddWallet(wallet);
-            }
-            wallet.Credit(proceeds);
-            var now = clock.GetUtcNow().UtcDateTime;
-            repository.AddTransaction(new WalletTransaction { Id = Guid.NewGuid(), WalletId = wallet.Id,
-                OrderId = order.Id, Amount = proceeds, Type = "SellerPayout", CreatedAtUtc = now });
-            repository.AddAudit(new AuditLog { Id = Guid.NewGuid(), ActorId = actorId,
-                EntityType = "Wallet", EntityId = wallet.Id.ToString(), Action = "Wallet.SellerPayout",
-                Details = $"Order={order.Id}; merchandise={order.ItemAmount}; commission={order.CommissionAmount}; credited={proceeds}",
-                CreatedAtUtc = now });
-            repository.AddNotification(new MarketplaceNotification { Id = Guid.NewGuid(), UserId = order.SellerId,
-                OrderId = order.Id, Category = "Orders",
-                Message = $"CoCo đã ghi có {proceeds:N0} đ vào ví từ đơn {order.ProductSku}.", CreatedAtUtc = now });
+            var order = await repository.OrderAsync(orderId, ct) ?? throw new KeyNotFoundException("Không tìm thấy đơn hàng.");
+            var walletId = await (payouts ?? new SellerPayoutService(repository))
+                .CreditCompletedOrderAsync(order, actorId, clock.GetUtcNow().UtcDateTime, ct);
             await repository.SaveAsync(ct);
-            return wallet.Id;
+            return walletId;
         }, ct);
-        return await repository.DetailsAsync(walletId, ct) ?? throw new InvalidOperationException("Wallet was not found after credit.");
+        return await repository.DetailsAsync(walletId, ct) ?? throw new InvalidOperationException("Không tìm thấy ví sau khi ghi có.");
     }
 }

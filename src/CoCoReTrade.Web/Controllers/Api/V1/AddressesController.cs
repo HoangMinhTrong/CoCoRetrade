@@ -15,7 +15,7 @@ public sealed class AddressesController(IAddressBookService addresses) : Control
     [HttpPost]
     public async Task<ActionResult<AddressDto>> Create([FromBody] AddressInput input, CancellationToken ct)
     {
-        if (input.Id.HasValue) return BadRequest(new { error = "Id is assigned by the server." });
+        if (input.Id.HasValue) return BadRequest(new { error = "Mã địa chỉ do hệ thống tự cấp." });
         try { return Ok(await addresses.SaveAsync(UserId, input, ct)); }
         catch (ArgumentException ex) { return BadRequest(new { error = ex.Message }); }
     }

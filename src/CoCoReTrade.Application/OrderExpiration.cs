@@ -16,16 +16,25 @@ public interface IOrderExpirationService
     Task<int> ExpireUnpaidAsync(int batchSize, CancellationToken ct);
 }
 
+public interface IAcceptedPickupExpirationRepository
+{
+    Task<IReadOnlyList<Guid>> DueAcceptedPickupOrdersAsync(DateTime nowUtc, int batchSize, CancellationToken ct);
+}
+
 public sealed class OrderExpirationService(IOrderRepository repository, IOrderService orders,
-    OrderExpirationPolicy policy, TimeProvider clock) : IOrderExpirationService
+    OrderExpirationPolicy policy, TimeProvider clock,
+    IAcceptedPickupExpirationRepository? acceptedPickups = null) : IOrderExpirationService
 {
     public async Task<int> ExpireUnpaidAsync(int batchSize, CancellationToken ct)
     {
         if (batchSize is < 1 or > 500) throw new ArgumentOutOfRangeException(nameof(batchSize));
-        var cutoff = clock.GetUtcNow().UtcDateTime.AddMinutes(-policy.UnpaidReservationMinutes);
+        var now = clock.GetUtcNow().UtcDateTime;
+        var cutoff = now.AddMinutes(-policy.UnpaidReservationMinutes);
         var ids = await repository.DueUnpaidOrdersAsync(cutoff, batchSize, ct);
+        IReadOnlyList<Guid> duePickups = acceptedPickups is null ? Array.Empty<Guid>() :
+            await acceptedPickups.DueAcceptedPickupOrdersAsync(now, batchSize, ct);
         var expired = 0;
-        foreach (var id in ids)
+        foreach (var id in duePickups.Concat(ids).Distinct().Take(batchSize))
         {
             ct.ThrowIfCancellationRequested();
             try

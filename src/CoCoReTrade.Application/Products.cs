@@ -76,7 +76,7 @@ public sealed class ProductService(IProductRepository repository, IPrivateImageS
             foreach (var inspectorId in await repository.InspectorUserIdsAsync(ct))
                 if (inspectorId != sellerId) repository.AddNotification(new MarketplaceNotification
                 {
-                    Id = Guid.NewGuid(), UserId = inspectorId, Category = "Listings",
+                    Id = Guid.NewGuid(), UserId = inspectorId, Category = "Listings", ProductId = product.Id,
                     Message = $"Ký gửi mới {code} đang chờ kiểm định.", CreatedAtUtc = DateTime.UtcNow
                 });
             await repository.SaveAsync(ct);
@@ -123,8 +123,9 @@ public sealed class ProductService(IProductRepository repository, IPrivateImageS
         p.Status == ProductStatus.Active || isAdmin || (viewerId is not null && p.SellerId == viewerId);
     private static ProductCard ToCard(Product p) => new(p.Id, p.Sku, p.Name, p.Brand, p.Category, p.Size,
         p.AskingPrice, p.VerifiedCondition ?? p.DeclaredCondition, p.Status, p.Images.OrderBy(i => i.SortOrder).FirstOrDefault()?.Id, p.SellerId,
-        p.ConsignmentCode);
+        p.Status == ProductStatus.Active ? string.Empty : p.ConsignmentCode);
     private static ProductDetails ToDetails(Product p) => new(p.Id, p.Sku, p.Name, p.Brand, p.Category, p.Size,
         p.OriginalPrice, p.AskingPrice, p.DeclaredCondition, p.VerifiedCondition, p.AllowOffers, p.Status, p.SellerId,
-        p.RejectionReason, p.Images.OrderBy(i => i.SortOrder).Select(i => i.Id).ToList(), p.CreatedAtUtc, p.ConsignmentCode);
+        p.RejectionReason, p.Images.OrderBy(i => i.SortOrder).Select(i => i.Id).ToList(), p.CreatedAtUtc,
+        p.Status == ProductStatus.Active ? string.Empty : p.ConsignmentCode);
 }

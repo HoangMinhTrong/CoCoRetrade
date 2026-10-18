@@ -1,23 +1,55 @@
-@model IReadOnlyList<ProductCard>
-@{ ViewData["Title"] = "Trang chủ"; }
-<section class="hero">
-    <div class="hero-content">
-        <div class="eyebrow">CoCo ReTrade · Curated secondhand</div>
-        <h1>Đồ đẹp<br />có thêm câu chuyện.</h1>
-        <p>Thời trang tuần hoàn có kiểm định. Mỗi món đồ được CoCo xem tận tay trước khi lên sàn.</p>
-        <a class="btn btn-wine mt-2" asp-controller="Shop" asp-action="Index">Khám phá ngay <span class="ms-2">→</span></a>
+﻿@model IReadOnlyList<ProductCard>
+@{
+    ViewData["Title"] = "Trang chủ";
+    var featured = Model.FirstOrDefault(p => p.CoverImageId.HasValue);
+}
+<section class="storefront-hero">
+    <div class="hero-copy">
+        <span class="eyebrow">Thời trang tuần hoàn, có kiểm định</span>
+        <h1>Đồ đẹp.<br />Một khởi đầu mới.</h1>
+        <p>Tìm món đồ hợp gu, trao tủ đồ thêm một vòng đời. CoCo kiểm định từng sản phẩm trước khi đến tay bạn.</p>
+        <div class="d-flex flex-wrap gap-2 mt-4">
+            <a class="btn btn-wine" asp-controller="Shop" asp-action="Index">Khám phá ngay <svg class="icon" aria-hidden="true"><use href="/images/icons.svg#arrow-right" /></svg></a>
+            <a class="btn btn-outline-wine" asp-controller="Listing" asp-action="Create">Ký gửi cùng CoCo</a>
+        </div>
+        <div class="hero-assurance"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#shield" /></svg> Mỗi món đồ đều được kiểm tra trực tiếp</div>
     </div>
-    <span class="hero-fashion" aria-hidden="true">✦</span>
+    <div class="hero-visual">
+        @if (featured is not null)
+        {
+            <a class="hero-feature-card" asp-controller="Shop" asp-action="Details" asp-route-id="@featured.Id">
+                <img src="/images/@featured.CoverImageId" alt="@featured.Name" fetchpriority="high" />
+                <div class="hero-feature-caption"><div><span class="eyebrow">Vừa lên kệ</span><strong>@featured.Name</strong></div><span>@featured.AskingPrice.ToString("N0") VNĐ</span></div>
+            </a>
+        }
+        else
+        {
+            <div class="hero-empty"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#bag" /></svg><span>Đẹp theo cách của bạn.</span><p>Những món đồ được trân trọng,<br />cho những câu chuyện tiếp theo.</p></div>
+        }
+        <span class="hero-stamp"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#check" /></svg> CoCo đã kiểm định</span>
+    </div>
 </section>
-<div class="section-heading"><div><div class="eyebrow mb-2">Mua sắm theo phong cách</div><h2>Danh mục nổi bật</h2></div></div>
-<div class="category-chips">
-    <a asp-controller="Shop" asp-action="Index" asp-route-category="Áo">Áo</a>
-    <a asp-controller="Shop" asp-action="Index" asp-route-category="Quần">Quần</a>
-    <a asp-controller="Shop" asp-action="Index" asp-route-category="Đầm/Váy">Đầm / Váy</a>
-    <a asp-controller="Shop" asp-action="Index" asp-route-category="Túi">Túi</a>
-    <a asp-controller="Shop" asp-action="Index" asp-route-category="Phụ kiện">Phụ kiện</a>
-    <a asp-controller="Shop" asp-action="Index">Xem tất cả →</a>
+<div class="trust-strip" aria-label="Trải nghiệm tại CoCo">
+    <div class="trust-item"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#shield" /></svg><div><strong>Yên tâm chọn đồ</strong><span>Kiểm định trước khi đăng bán</span></div></div>
+    <div class="trust-item"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#tag" /></svg><div><strong>Giá hợp với bạn</strong><span>Đề xuất giá với người bán</span></div></div>
+    <div class="trust-item"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#package" /></svg><div><strong>Nhận hàng thuận tiện</strong><span>Giao tận nơi hoặc lấy tại CoCo</span></div></div>
 </div>
-<div class="section-heading mt-4"><div><div class="eyebrow mb-2">Đã qua kiểm định</div><h2>Mới lên kệ</h2><p>Những món đồ độc bản vừa được CoCo duyệt.</p></div><a asp-controller="Shop" asp-action="Index" class="fw-semibold">Xem tất cả →</a></div>
-<partial name="_ProductGrid" model="Model" />
-<section class="panel mt-5 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3" style="background:#f0e5e0"><div><div class="eyebrow mb-2">Tủ đồ của bạn</div><h2 class="display-serif mb-1">Để món cũ tìm chủ mới.</h2><p class="mb-0 subtitle">Gửi ảnh trước, CoCo kiểm định và đăng bán sau.</p></div><a class="btn btn-wine" asp-controller="Listing" asp-action="Create">Bắt đầu ký gửi →</a></section>
+<section class="home-section" aria-labelledby="categories-title">
+    <div class="section-heading"><div><span class="eyebrow">Bắt đầu từ món bạn thích</span><h2 id="categories-title" class="mt-2">Hôm nay bạn tìm gì?</h2></div></div>
+    <div class="category-chips">
+        <a asp-controller="Shop" asp-action="Index" asp-route-category="Áo">Áo</a>
+        <a asp-controller="Shop" asp-action="Index" asp-route-category="Quần">Quần</a>
+        <a asp-controller="Shop" asp-action="Index" asp-route-category="Đầm/Váy">Đầm / Váy</a>
+        <a asp-controller="Shop" asp-action="Index" asp-route-category="Túi">Túi</a>
+        <a asp-controller="Shop" asp-action="Index" asp-route-category="Phụ kiện">Phụ kiện</a>
+        <a asp-controller="Shop" asp-action="Index">Tất cả sản phẩm <svg class="icon" aria-hidden="true"><use href="/images/icons.svg#arrow-right" /></svg></a>
+    </div>
+</section>
+<section class="home-section" aria-labelledby="new-products-title">
+    <div class="section-heading"><div><span class="eyebrow">Độc bản, đã qua kiểm định</span><h2 id="new-products-title" class="mt-2">Mới lên kệ</h2><p>Thêm một lựa chọn đẹp cho tủ đồ của bạn.</p></div><a asp-controller="Shop" asp-action="Index" class="text-link">Xem tất cả <svg class="icon" aria-hidden="true"><use href="/images/icons.svg#arrow-right" /></svg></a></div>
+    <partial name="_ProductGrid" model="Model" />
+</section>
+<section class="consign-banner d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-4">
+    <div><span class="eyebrow">Dọn tủ nhẹ nhàng</span><h2 class="mt-2 mb-2">Món bạn ít mặc.<br />Có thể là món ai đó đang tìm.</h2><p class="subtitle mb-0">Gửi ảnh và thông tin món đồ. CoCo sẽ đồng hành cùng bạn trong việc kiểm định và đăng bán.</p></div>
+    <a class="btn btn-wine flex-shrink-0" asp-controller="Listing" asp-action="Create">Bắt đầu ký gửi <svg class="icon" aria-hidden="true"><use href="/images/icons.svg#arrow-right" /></svg></a>
+</section>

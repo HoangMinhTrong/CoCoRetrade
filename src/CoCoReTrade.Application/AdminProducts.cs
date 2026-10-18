@@ -25,7 +25,7 @@ public static class StaffPermissions
 public sealed class ProductConcurrencyException(string message) : InvalidOperationException(message);
 
 public sealed record InspectionSubmission(bool Passed, string Name, string Brand, string Category, string Size,
-    decimal OriginalPrice, decimal AskingPrice, int VerifiedCondition, string Notes, string ExpectedRowVersion,
+    decimal OriginalPrice, decimal AskingPrice, int VerifiedCondition, string? Notes, string ExpectedRowVersion,
     IReadOnlyCollection<ImageUpload> Images);
 public sealed record InspectionSummary(Guid Id, string InspectorId, bool Passed, string Name, string Brand,
     string Category, string Size, decimal OriginalPrice, decimal AskingPrice, int VerifiedCondition,
@@ -72,7 +72,7 @@ public interface IAdminProductService
     Task<AdminProductDetails> SelectCoverAsync(string actorId, Guid id, Guid imageId,
         string expectedRowVersion, CancellationToken ct);
     Task<AdminProductDetails> PublishAsync(string actorId, Guid id, string expectedRowVersion,
-        string confirmedSku, bool physicalItemConfirmed, CancellationToken ct);
+        bool physicalItemConfirmed, CancellationToken ct);
     Task<AdminProductDetails> RejectAsync(string actorId, Guid id, string reason, string expectedRowVersion, CancellationToken ct);
     Task<IReadOnlyList<AuditEntry>> AuditAsync(string actorId, Guid? productId, CancellationToken ct);
 }
@@ -107,8 +107,8 @@ public sealed class AdminProductService(IAdminProductRepository repository, ISta
     public async Task<AdminProductDetails> InspectAsync(string actorId, Guid id, InspectionSubmission request, CancellationToken ct)
     {
         await permissions.EnsureAsync(actorId, StaffPermissions.Inspect, ct);
-        if (request is null || request.Images is null) throw new ArgumentException("Inspection details are required.");
-        if (request.Images.Count > 10) throw new ArgumentException("At most 10 inspection images are allowed.");
+        if (request is null || request.Images is null) throw new ArgumentException("Cần nhập kết quả kiểm định.");
+        if (request.Images.Count > 10) throw new ArgumentException("Chỉ được tải tối đa 10 ảnh kiểm định.");
         var keys = new List<string>();
         var committed = false;
         try
@@ -120,17 +120,14 @@ public sealed class AdminProductService(IAdminProductRepository repository, ISta
                 keys.Add(key);
                 uploaded.Add(new ProductImage(key, type, uploaded.Count));
             }
-            // Allocation is outside the transaction: SQL sequences are monotonic and gaps are acceptable.
-            var sku = request.Passed ? await codes.NewInventorySkuAsync(ct) : null;
             await using var transaction = await repository.BeginTransactionAsync(ct);
-            var product = await repository.FindAsync(id, ct) ?? throw new KeyNotFoundException("Product not found.");
+            var product = await repository.FindAsync(id, ct) ?? throw new KeyNotFoundException("Không tìm thấy sản phẩm.");
             EnsureVersion(product, request.ExpectedRowVersion);
             var inspection = await lifecycle.InspectAsync(actorId, product, request,
-                request.Passed ? (string.IsNullOrEmpty(product.Sku) ? sku : product.Sku) : null,
                 uploaded, clock.GetUtcNow().UtcDateTime, ct);
             repository.AddInspection(inspection);
             repository.AddAudit(NewAudit(actorId, "Products.Inspected", product,
-                $"{(request.Passed ? "Passed" : "Failed")}; condition={request.VerifiedCondition}%; SKU={product.Sku}; notes={request.Notes.Trim()}"));
+                $"{(request.Passed ? "Passed" : "Failed")}; condition={request.VerifiedCondition}%; SKU={product.Sku}; notes={request.Notes?.Trim() ?? string.Empty}"));
             await repository.SaveAsync(ct);
             var result = await ToDetailsAsync(product, ct);
             await transaction.CommitAsync(ct);
@@ -148,7 +145,7 @@ public sealed class AdminProductService(IAdminProductRepository repository, ISta
     {
         await permissions.EnsureAsync(actorId, StaffPermissions.Inspect, ct);
         await using var transaction = await repository.BeginTransactionAsync(ct);
-        var product = await repository.FindAsync(id, ct) ?? throw new KeyNotFoundException("Product not found.");
+        var product = await repository.FindAsync(id, ct) ?? throw new KeyNotFoundException("Không tìm thấy sản phẩm.");
         EnsureVersion(product, expectedRowVersion);
         product.SelectCover(imageId, actorId, clock.GetUtcNow().UtcDateTime);
         repository.AddAudit(NewAudit(actorId, "Products.CoverSelected", product, imageId.ToString()));
@@ -158,18 +155,18 @@ public sealed class AdminProductService(IAdminProductRepository repository, ISta
         return result;
     }
     public async Task<AdminProductDetails> PublishAsync(string actorId, Guid id, string expectedRowVersion,
-        string confirmedSku, bool physicalItemConfirmed, CancellationToken ct)
+        bool physicalItemConfirmed, CancellationToken ct)
     {
         await permissions.EnsureAsync(actorId, StaffPermissions.Publish, ct);
         await using var transaction = await repository.BeginTransactionAsync(ct);
-        var product = await repository.FindAsync(id, ct) ?? throw new KeyNotFoundException("Product not found.");
+        var product = await repository.FindAsync(id, ct) ?? throw new KeyNotFoundException("Không tìm thấy sản phẩm.");
         EnsureVersion(product, expectedRowVersion);
-        if (!product.CanPublish) throw new InvalidOperationException("A passed physical inspection and inventory SKU are required.");
-        if (!physicalItemConfirmed || string.IsNullOrEmpty(product.Sku) || !string.Equals(confirmedSku, product.Sku, StringComparison.Ordinal))
-            throw new ArgumentException("Confirm the inspected physical item and inventory SKU before publishing.");
-        await lifecycle.PublishAsync(actorId, product, clock.GetUtcNow().UtcDateTime, ct);
+        if (!product.CanPublish) throw new InvalidOperationException("Cần kiểm định hiện vật đạt yêu cầu trước khi đăng bán.");
+        if (!physicalItemConfirmed) throw new ArgumentException("Hãy xác nhận hiện vật đạt yêu cầu trước khi đăng bán.");
+        var sku = await codes.NewProductSkuAsync(ct);
+        await lifecycle.PublishAsync(actorId, product, sku, clock.GetUtcNow().UtcDateTime, ct);
         repository.AddAudit(NewAudit(actorId, "Products.Published", product, product.Sku));
-        repository.AddNotification(NewNotification(product.SellerId, $"Sản phẩm {product.ConsignmentCode} đã được duyệt lên sàn."));
+        repository.AddNotification(NewNotification(product.SellerId, $"Sản phẩm {product.ConsignmentCode} đã được duyệt lên sàn với mã SKU {product.Sku}.", product.Id));
         await repository.SaveAsync(ct);
         var result = await ToDetailsAsync(product, ct);
         await transaction.CommitAsync(ct);
@@ -179,11 +176,11 @@ public sealed class AdminProductService(IAdminProductRepository repository, ISta
     {
         await permissions.EnsureAsync(actorId, StaffPermissions.Reject, ct);
         await using var transaction = await repository.BeginTransactionAsync(ct);
-        var product = await repository.FindAsync(id, ct) ?? throw new KeyNotFoundException("Product not found.");
+        var product = await repository.FindAsync(id, ct) ?? throw new KeyNotFoundException("Không tìm thấy sản phẩm.");
         EnsureVersion(product, expectedRowVersion);
         await lifecycle.RejectAsync(actorId, product, reason, ct);
         repository.AddAudit(NewAudit(actorId, "Products.Rejected", product, product.RejectionReason!));
-        repository.AddNotification(NewNotification(product.SellerId, $"Sản phẩm {product.ConsignmentCode} bị từ chối: {product.RejectionReason}"));
+        repository.AddNotification(NewNotification(product.SellerId, $"Sản phẩm {product.ConsignmentCode} bị từ chối: {product.RejectionReason}", product.Id));
         await repository.SaveAsync(ct);
         var result = await ToDetailsAsync(product, ct);
         await transaction.CommitAsync(ct);
@@ -198,19 +195,19 @@ public sealed class AdminProductService(IAdminProductRepository repository, ISta
     {
         byte[] supplied;
         try { supplied = Convert.FromBase64String(expected ?? ""); }
-        catch (FormatException) { throw new ArgumentException("Invalid product version."); }
+        catch (FormatException) { throw new ArgumentException("Phiên bản sản phẩm không hợp lệ."); }
         if (supplied.Length == 0 || !supplied.SequenceEqual(product.RowVersion))
-            throw new ProductConcurrencyException("Product changed. Reload the inspection page.");
+            throw new ProductConcurrencyException("Sản phẩm đã thay đổi. Hãy tải lại trang kiểm định.");
     }
     private AuditLog NewAudit(string actorId, string action, Product product, string details) => new()
     {
         Id = Guid.NewGuid(), ActorId = actorId, Action = action, EntityType = "Product",
         EntityId = product.Id.ToString(), Details = details, CreatedAtUtc = clock.GetUtcNow().UtcDateTime
     };
-    private MarketplaceNotification NewNotification(string userId, string message) => new()
+    private MarketplaceNotification NewNotification(string userId, string message, Guid? productId = null) => new()
     {
         Id = Guid.NewGuid(), UserId = userId, Category = "Listings", Message = message,
-        CreatedAtUtc = clock.GetUtcNow().UtcDateTime
+        ProductId = productId, CreatedAtUtc = clock.GetUtcNow().UtcDateTime
     };
     private async Task<AdminProductDetails> ToDetailsAsync(Product p, CancellationToken ct) => new(
         new ProductDetails(p.Id, p.Sku, p.Name, p.Brand, p.Category, p.Size, p.OriginalPrice, p.AskingPrice,

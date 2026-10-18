@@ -15,9 +15,10 @@ public sealed class SystemServicesTests
         var sequence = new Sequence();
         var codes = new ProductCodeService(sequence, new Clock(Start));
         var all = await Task.WhenAll(Enumerable.Range(0, 80).Select(i =>
-            i % 2 == 0 ? codes.NewConsignmentCodeAsync(default) : codes.NewInventorySkuAsync(default)));
+            i % 2 == 0 ? codes.NewConsignmentCodeAsync(default) : codes.NewProductSkuAsync(default)));
         Assert.Equal(80, all.Distinct().Count());
-        Assert.Equal(40, all.Count(x => x.StartsWith("CG-2026-")));
+        Assert.Equal(40, all.Count(x => x.StartsWith("CD-")));
+        Assert.Matches(@"^CD-\d{2,}-\d{4}$", all.First(x => x.StartsWith("CD-")));
         Assert.Equal(40, all.Count(x => x.StartsWith("CC-2026-")));
     }
 
@@ -67,9 +68,9 @@ public sealed class SystemServicesTests
         var repository = new Wallets();
         var service = new WalletService(repository, new UnusedAdminWallets(), new Permissions(), new Clock(Start));
         var key = Guid.NewGuid();
-        var request = await service.RequestWithdrawalAsync("seller", key, 60_000, "****1234", default);
+        var request = await service.RequestWithdrawalAsync("seller", key, 60_000, "001234567890", "Vietcombank", default);
         Assert.Equal(40_000, repository.Wallet.Balance);
-        var replay = await service.RequestWithdrawalAsync("seller", key, 60_000, "****1234", default);
+        var replay = await service.RequestWithdrawalAsync("seller", key, 60_000, "001234567890", "Vietcombank", default);
         Assert.Equal(request.Id, replay.Id);
         Assert.Single(repository.Transactions);
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
@@ -87,7 +88,7 @@ public sealed class SystemServicesTests
     {
         var repository = new Wallets();
         var service = new WalletService(repository, new UnusedAdminWallets(), new Permissions(), new Clock(Start));
-        var request = await service.RequestWithdrawalAsync("seller", Guid.NewGuid(), 50_000, "****4321", default);
+        var request = await service.RequestWithdrawalAsync("seller", Guid.NewGuid(), 50_000, "001234567891", "Vietcombank", default);
         var approved = await service.DecideWithdrawalAsync("admin", request.Id, true, null, default);
         Assert.Equal("Approved", approved.Status);
         Assert.Equal(50_000, repository.Wallet.Balance);
@@ -119,8 +120,8 @@ public sealed class SystemServicesTests
         var product = Product.Submit("seller", "CG-2026-000100", "Linen shirt", "Zara", "Shirts", "M",
             500_000, 300_000, 95, true, [new("a", "image/jpeg", 0), new("b", "image/jpeg", 1), new("c", "image/jpeg", 2)]);
         product.RecordInspection("inspector", true, product.Name, product.Brand, product.Category, product.Size,
-            product.OriginalPrice, product.AskingPrice, 95, "Physical item checked", "CC-2026-000100", [], Start.UtcDateTime);
-        product.Publish(Start.UtcDateTime);
+            product.OriginalPrice, product.AskingPrice, 95, "Physical item checked", [], Start.UtcDateTime);
+        product.Publish("CC-2026-000100", Start.UtcDateTime);
         return product;
     }
     private sealed class Clock(DateTimeOffset now) : TimeProvider
@@ -177,6 +178,7 @@ public sealed class SystemServicesTests
         public string? Actor { get; private set; }
         public Task<OrderDto> CancelAsync(Guid id, string actorId, bool isAdmin, CancellationToken ct)
         { Cancelled.Add(id); Actor = actorId; return Task.FromResult<OrderDto>(null!); }
+        public Task<OrderDto> ReturnUndeliveredAsync(Guid id, string adminId, bool itemReturnedToStore, CancellationToken ct) => throw new NotImplementedException();
         public Task<CheckoutQuote> QuoteAsync(Guid id, Guid? offer, string buyer, FulfillmentType type, string? province, string? ward, CancellationToken ct) => throw new NotImplementedException();
         public Task<OrderDto> PlaceAsync(CheckoutRequest request, string buyer, CancellationToken ct) => throw new NotImplementedException();
         public Task<OrderDto?> DetailsAsync(Guid id, string viewer, bool admin, CancellationToken ct) => throw new NotImplementedException();

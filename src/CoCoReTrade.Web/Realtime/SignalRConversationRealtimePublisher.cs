@@ -19,7 +19,7 @@ public sealed class SignalRConversationRealtimePublisher(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Could not broadcast message {MessageId} for conversation {ConversationId}",
+            logger.LogWarning(ex, "Không thể phát tin nhắn {MessageId} cho hội thoại {ConversationId}",
                 message.Id, conversationId);
         }
     }

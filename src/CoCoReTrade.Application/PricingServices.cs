@@ -19,7 +19,7 @@ public sealed class ShippingFeeService(IShippingZoneRepository zones) : IShippin
         if (fulfillment == FulfillmentType.Pickup) return 0;
         if (fulfillment != FulfillmentType.Shipping) throw new ArgumentOutOfRangeException(nameof(fulfillment));
         if (string.IsNullOrWhiteSpace(province) || string.IsNullOrWhiteSpace(ward))
-            throw new ArgumentException("Province/city and ward/commune are required.");
+            throw new ArgumentException("Cần nhập tỉnh/thành và phường/xã.");
         return ShippingFeeRules.Calculate(fulfillment,
             await zones.IsInnerCityAsync(province.Trim(), ward.Trim(), ct));
     }

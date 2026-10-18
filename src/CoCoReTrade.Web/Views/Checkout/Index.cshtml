@@ -9,22 +9,28 @@
 <div class="mt-4 mb-3"><a asp-controller="Shop" asp-action="Details" asp-route-id="@Model.ProductId">← Chi tiết sản phẩm</a></div>
 <div class="eyebrow">@(Model.OfferId.HasValue ? "Giá đã thỏa thuận" : "Mua ngay")</div>
 <h1 class="page-title mt-1">Xác nhận đặt hàng</h1>
-<p class="subtitle">Sản phẩm chỉ được giữ sau khi đơn được tạo thành công. Đơn mới ở trạng thái chờ xử lý và chưa được đánh dấu đã thanh toán.</p>
+<p class="subtitle">Chọn cách nhận món đồ của bạn và kiểm tra tổng tiền. Bạn thanh toán tiền mặt khi nhận hàng.</p>
 <div class="row g-4 mb-5"><div class="col-lg-7">
     <form asp-controller="Checkout" asp-action="Index" method="post" class="panel" id="checkoutForm">
         <input asp-for="ProductId" type="hidden" /><input asp-for="OfferId" type="hidden" /><input asp-for="IdempotencyKey" type="hidden" />
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-        <h2 class="display-serif fs-4 mb-3">Thông tin nhận hàng</h2>
+        <h2 class="fs-5 mb-3">Thông tin nhận hàng</h2>
         <div class="row g-3"><div class="col-md-6"><label asp-for="RecipientName" class="form-label"></label><input asp-for="RecipientName" class="form-control" autocomplete="name" /><span asp-validation-for="RecipientName" class="text-danger small"></span></div>
         <div class="col-md-6"><label asp-for="RecipientPhone" class="form-label"></label><input asp-for="RecipientPhone" class="form-control" inputmode="tel" autocomplete="tel" /><span asp-validation-for="RecipientPhone" class="text-danger small"></span></div></div>
         <div class="mt-4"><label asp-for="Fulfillment" class="form-label"></label><select asp-for="Fulfillment" class="form-select">
             <option value="Pickup" disabled="@(!shipping.CanPickup ? "disabled" : null)">Tới CoCo lấy · miễn phí</option>
             <option value="Shipping">Giao tận nơi</option>
         </select></div>
-        <div id="pickupFields" class="mt-3"><div class="alert alert-light border">Địa chỉ CoCo: <strong>@(shipping.CanPickup ? shipping.StoreAddress : "Chưa được cấu hình")</strong><br />Giờ nhận: @shipping.OpeningHour:00–@shipping.ClosingHour:00, từ ngày mai đến 3 ngày tới.
+        <div id="pickupPaymentNotice" class="alert alert-light border mt-3">Thanh toán tiền mặt tại CoCo sau khi kiểm tra hàng. Không cần chuyển khoản trước.</div>
+        <div id="shippingPaymentNotice" class="alert alert-light border mt-3" hidden>Kiểm tra hàng khi người giao hàng đến. Nếu nhận hàng, thanh toán tiền mặt cho người giao hàng. Không cần chuyển khoản trước.</div>
+        <div id="pickupFields" class="mt-3"><div class="alert alert-light border">Địa chỉ CoCo: <strong>@(shipping.CanPickup ? shipping.StoreAddress : "Chưa được cấu hình")</strong><br />
+            @if (quote.OfferExpiresAtUtc.HasValue)
+            { <span>Nhận trong giờ mở cửa @shipping.OpeningHour:00–@shipping.ClosingHour:00, chậm nhất trước hạn giá thỏa thuận. Quá hạn chưa nhận và chưa thanh toán, đơn được hủy và giá trở về giá niêm yết.</span> }
+            else
+            { <span>Giờ nhận: @shipping.OpeningHour:00–@shipping.ClosingHour:00, từ ngày mai đến 3 ngày tới.</span> }
             @if (ViewBag.StoreMapUrl is string mapUrl) { <br /><a href="@mapUrl" target="_blank" rel="noopener noreferrer">Xem đường đi trên bản đồ →</a> }
         </div>
-            <label asp-for="PickupLocal" class="form-label"></label><input asp-for="PickupLocal" type="datetime-local" class="form-control" /><span asp-validation-for="PickupLocal" class="text-danger small"></span></div>
+            <label asp-for="PickupLocal" class="form-label"></label><input asp-for="PickupLocal" type="datetime-local" class="form-control" max="@(quote.OfferExpiresAtUtc.HasValue ? new DateTimeOffset(quote.OfferExpiresAtUtc.Value.AddSeconds(-1), TimeSpan.Zero).ToOffset(TimeSpan.FromHours(shipping.StoreUtcOffsetHours)).ToString("yyyy-MM-ddTHH:mm") : null)" /><span asp-validation-for="PickupLocal" class="text-danger small"></span></div>
         <div id="shippingFields" class="mt-3" hidden>
             @if (savedAddresses.Count > 0)
             { <label for="savedAddress" class="form-label">Chọn nhanh địa chỉ đã lưu</label><select id="savedAddress" class="form-select mb-3"><option value="">Nhập địa chỉ khác</option>@foreach (var a in savedAddresses) { <option value="@a.Id" data-recipient="@a.RecipientName" data-phone="@a.RecipientPhone" data-province="@a.Province" data-ward="@a.Ward" data-street="@a.StreetAddress">@a.RecipientName · @a.StreetAddress, @a.Ward, @a.Province</option> }</select> }
@@ -33,19 +39,19 @@
             <div class="col-12"><label asp-for="StreetAddress" class="form-label"></label><input asp-for="StreetAddress" class="form-control" autocomplete="street-address" placeholder="Số nhà, đường, khu vực" /><span asp-validation-for="StreetAddress" class="text-danger small"></span></div>
             <div class="col-sm-6"><label asp-for="PreferredDeliveryWindow" class="form-label"></label><select asp-for="PreferredDeliveryWindow" class="form-select"><option value="">Không yêu cầu</option><option value="Morning">Buổi sáng</option><option value="Afternoon">Buổi chiều</option><option value="BusinessHours">Giờ hành chính</option></select></div>
             <div class="col-12"><label asp-for="DeliveryNote" class="form-label"></label><textarea asp-for="DeliveryNote" rows="2" maxlength="500" class="form-control" placeholder="Hướng dẫn cho người giao hàng (nếu có)"></textarea></div></div>
-            <p class="form-text mt-2">Phí nội thành theo danh sách tỉnh/thành và phường/xã CoCo cấu hình: 20.000đ. Khu vực khác: 35.000đ.</p>
+            <p class="form-text mt-2">Giao nội thành: 20,000 VNĐ. Ngoại thành và liên tỉnh: 35,000 VNĐ. Phí được cập nhật theo địa chỉ bạn nhập.</p>
         </div>
         <button class="btn btn-wine w-100 mt-4" type="submit">Xác nhận đặt hàng</button>
     </form>
-</div><div class="col-lg-5"><div class="panel position-sticky" style="top:110px">
+</div><div class="col-lg-5"><div class="panel checkout-summary">
     <div class="d-flex align-items-center gap-3 mb-3">
         @if (product?.ImageIds.Count > 0) { <img src="/images/@product.ImageIds[0]" alt="@quote.ProductName" style="width:76px;height:94px;object-fit:cover;border-radius:10px" /> }
-        <div><div class="eyebrow">@quote.ProductSku</div><h2 class="display-serif fs-4 mb-1">@quote.ProductName</h2><small class="text-muted">Size @quote.ProductSize · @(product?.VerifiedCondition ?? product?.DeclaredCondition)% độ mới</small></div>
+        <div><div class="eyebrow">@quote.ProductSku</div><h2 class="mb-1">@quote.ProductName</h2><small class="text-muted">Kích cỡ @UiText.For(quote.ProductSize) · @(product?.VerifiedCondition ?? product?.DeclaredCondition)% độ mới</small></div>
     </div>
-    @if (quote.OfferExpiresAtUtc.HasValue) { <div class="alert alert-success small">Giá riêng của bạn có hiệu lực đến @quote.OfferExpiresAtUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm").</div> }
-    <div class="spec-row"><span>Tiền hàng</span><strong>@quote.MerchandisePrice.ToString("N0")đ</strong></div>
-    <div class="spec-row" aria-live="polite"><span>Phí vận chuyển</span><strong id="shippingFee">@(quote.ShippingFeePending ? "Chọn tỉnh/thành và phường/xã" : quote.ShippingFee.ToString("N0") + "đ")</strong></div>
-    <div class="spec-row fs-5" aria-live="polite"><span>Tổng thanh toán</span><strong id="totalAmount">@(quote.ShippingFeePending ? "—" : quote.TotalAmount.ToString("N0") + "đ")</strong></div>
+    @if (quote.OfferExpiresAtUtc.HasValue) { <div class="alert alert-success small">Giá riêng của bạn có hiệu lực đến @(new DateTimeOffset(quote.OfferExpiresAtUtc.Value, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(shipping.StoreUtcOffsetHours)).ToString("dd/MM/yyyy HH:mm")) (giờ CoCo). Nếu tới lấy, hãy chọn giờ nhận trước mốc này. Nếu giao tận nơi, hãy đặt đơn trước mốc này.</div> }
+    <div class="spec-row"><span>Tiền hàng</span><strong>@quote.MerchandisePrice.ToString("N0") VNĐ</strong></div>
+    <div class="spec-row" aria-live="polite"><span>Phí vận chuyển</span><strong id="shippingFee">@(quote.ShippingFeePending ? "Chọn tỉnh/thành và phường/xã" : quote.ShippingFee.ToString("N0") + " VNĐ")</strong></div>
+    <div class="spec-row checkout-total fs-5" aria-live="polite"><span>Tổng thanh toán</span><strong id="totalAmount">@(quote.ShippingFeePending ? "—" : quote.TotalAmount.ToString("N0") + " VNĐ")</strong></div>
     <p id="quoteError" class="small text-danger mt-2" role="alert"></p>
 </div></div></div>
 @section Scripts { <script>
@@ -60,10 +66,12 @@ if(savedAddress) savedAddress.addEventListener('change', () => {
     document.getElementById(field).value = selected.dataset[key] || '';
   updateQuote();
 });
-const money = n => new Intl.NumberFormat('vi-VN').format(n) + 'đ';
+const money = n => new Intl.NumberFormat('en-US', {maximumFractionDigits: 0}).format(n) + ' VNĐ';
 async function updateQuote(){
   const delivery = type.value === 'Shipping'; document.getElementById('pickupFields').hidden = delivery;
   document.getElementById('shippingFields').hidden = !delivery;
+  document.getElementById('pickupPaymentNotice').hidden = delivery;
+  document.getElementById('shippingPaymentNotice').hidden = !delivery;
   pickup.required = !delivery; for(const el of [province,ward,street]) el.required = delivery;
   const feeEl = document.getElementById('shippingFee'), totalEl = document.getElementById('totalAmount');
   if(delivery && (!province.value.trim() || !ward.value.trim())){feeEl.textContent='Chọn tỉnh/thành và phường/xã';totalEl.textContent='—';return;}

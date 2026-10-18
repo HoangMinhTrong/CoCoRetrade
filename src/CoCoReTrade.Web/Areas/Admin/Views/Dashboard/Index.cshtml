@@ -1,24 +1,50 @@
 @model AdminProductDashboard
-@{ ViewData["Title"] = "Bảng điều khiển CoCo"; }
-<div class="eyebrow mt-4">CoCo Backoffice</div><h1 class="page-title mt-1">Bảng điều khiển</h1>
-<p class="subtitle">Theo dõi ký gửi, kiểm định và vận hành đơn hàng.</p>
+@inject Microsoft.AspNetCore.Authorization.IAuthorizationService Authorization
+@{
+    ViewData["Title"] = "Tổng quan quản trị";
+    var canInspect = (await Authorization.AuthorizeAsync(User, null, StaffPermissions.ReadPending)).Succeeded;
+    var canManageProducts = (await Authorization.AuthorizeAsync(User, null, StaffPermissions.ManageProducts)).Succeeded;
+    var canManageOrders = (await Authorization.AuthorizeAsync(User, null, StaffPermissions.ManageOrders)).Succeeded;
+    var canManageUsers = (await Authorization.AuthorizeAsync(User, null, StaffPermissions.ManageUsers)).Succeeded;
+    var canManageWallets = (await Authorization.AuthorizeAsync(User, null, StaffPermissions.ManageWallets)).Succeeded;
+    var canReadAudit = (await Authorization.AuthorizeAsync(User, null, StaffPermissions.ReadAudit)).Succeeded;
+}
+
+<header class="admin-page-header">
+    <div><div class="eyebrow">Không gian làm việc CoCo</div><h1 class="page-title">Tổng quan</h1><p class="subtitle mb-0">Mọi việc trong ngày, gọn trong một nơi.</p></div>
+    @if (canInspect) { <a class="btn btn-wine" asp-area="Admin" asp-controller="Inspection" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#clipboard" /></svg> Kiểm định ký gửi</a> }
+</header>
 <div class="row g-3 mb-4">
-    <div class="col-6 col-lg-4"><div class="panel h-100"><div class="eyebrow">Chờ duyệt</div><div class="display-serif fs-2">@Model.Pending</div></div></div>
-    <div class="col-6 col-lg-4"><div class="panel h-100"><div class="eyebrow">Đã kiểm định</div><div class="display-serif fs-2">@Model.Inspected</div></div></div>
-    <div class="col-6 col-lg-4"><div class="panel h-100"><div class="eyebrow">Đang bán</div><div class="display-serif fs-2">@Model.Active</div></div></div>
-    <div class="col-6 col-lg-4"><div class="panel h-100"><div class="eyebrow">Từ chối</div><div class="display-serif fs-2">@Model.Rejected</div></div></div>
-    <div class="col-6 col-lg-4"><div class="panel h-100"><div class="eyebrow">Đã giữ hàng</div><div class="display-serif fs-2">@Model.Reserved</div></div></div>
-    <div class="col-6 col-lg-4"><div class="panel h-100"><div class="eyebrow">Đã bán</div><div class="display-serif fs-2">@Model.Sold</div></div></div>
+    <div class="col-6 col-xl-4"><div class="panel admin-metric-card h-100"><span class="admin-status admin-status--warning">Cần xử lý</span><div class="admin-metric-value">@Model.Pending</div><h2 class="fs-6 mb-0">Sản phẩm chờ duyệt</h2></div></div>
+    <div class="col-6 col-xl-4"><div class="panel admin-metric-card h-100"><span class="admin-status">Kiểm định</span><div class="admin-metric-value">@Model.Inspected</div><h2 class="fs-6 mb-0">Đã kiểm định</h2></div></div>
+    <div class="col-6 col-xl-4"><div class="panel admin-metric-card h-100"><span class="admin-status admin-status--success">Trên cửa hàng</span><div class="admin-metric-value">@Model.Active</div><h2 class="fs-6 mb-0">Đang mở bán</h2></div></div>
+    <div class="col-6 col-xl-4"><div class="panel admin-metric-card h-100"><span class="admin-status admin-status--muted">Kết quả duyệt</span><div class="admin-metric-value">@Model.Rejected</div><h2 class="fs-6 mb-0">Đã từ chối</h2></div></div>
+    <div class="col-6 col-xl-4"><div class="panel admin-metric-card h-100"><span class="admin-status admin-status--warning">Có đơn hàng</span><div class="admin-metric-value">@Model.Reserved</div><h2 class="fs-6 mb-0">Đang giữ cho khách</h2></div></div>
+    <div class="col-6 col-xl-4"><div class="panel admin-metric-card h-100"><span class="admin-status admin-status--success">Hoàn tất</span><div class="admin-metric-value">@Model.Sold</div><h2 class="fs-6 mb-0">Đã bán thành công</h2></div></div>
 </div>
-<div class="d-flex flex-wrap gap-2 mb-5">
-    <a class="btn btn-wine" asp-area="Admin" asp-controller="Inspection" asp-action="Index">Ký gửi chờ duyệt</a>
-    @if (User.HasClaim(StaffPermissions.ClaimType, StaffPermissions.ManageProducts))
+<div class="admin-section-heading"><h2 class="fs-5 mb-1">Thao tác nhanh</h2><p class="text-muted small mb-0">Chọn công việc bạn muốn xử lý.</p></div>
+<div class="row g-3 mb-5">
+    @if (canInspect) { <div class="col-md-6 col-xl-4"><a class="panel admin-quick-link h-100" asp-area="Admin" asp-controller="Inspection" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#clipboard" /></svg><div><h3 class="fs-6">Ký gửi & kiểm định</h3><p class="small text-muted mb-0">Tiếp nhận sản phẩm, ghi kết quả và duyệt bài.</p></div><span aria-hidden="true">→</span></a></div> }
+    @if (canManageProducts)
     {
-        <a class="btn btn-outline-wine" asp-area="Admin" asp-controller="Products" asp-action="Index">Sản phẩm</a>
-        <a class="btn btn-outline-wine" asp-area="Admin" asp-controller="Orders" asp-action="Index">Đơn hàng</a>
-        <a class="btn btn-outline-wine" asp-area="Admin" asp-controller="Users" asp-action="Index">Người dùng</a>
-        <a class="btn btn-outline-wine" asp-area="Admin" asp-controller="HelpDesk" asp-action="Index">Hỗ trợ khách hàng</a>
-        <a class="btn btn-outline-wine" asp-area="Admin" asp-controller="Wallets" asp-action="Index">Ví</a>
-        <a class="btn btn-outline-wine" asp-area="Admin" asp-controller="Audit" asp-action="Index">Nhật ký</a>
+        <div class="col-md-6 col-xl-4"><a class="panel admin-quick-link h-100" asp-area="Admin" asp-controller="Products" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#tag" /></svg><div><h3 class="fs-6">Sản phẩm</h3><p class="small text-muted mb-0">Tra cứu mã sản phẩm và theo dõi trạng thái.</p></div><span aria-hidden="true">→</span></a></div>
+    }
+    @if (canManageOrders)
+    {
+        <div class="col-md-6 col-xl-4"><a class="panel admin-quick-link h-100" asp-area="Admin" asp-controller="Orders" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#package" /></svg><div><h3 class="fs-6">Đơn hàng</h3><p class="small text-muted mb-0">Xử lý đơn mới, giao hàng và xác nhận hoàn tất.</p></div><span aria-hidden="true">→</span></a></div>
+    }
+    @if (canManageUsers)
+    {
+        <div class="col-md-6 col-xl-4"><a class="panel admin-quick-link h-100" asp-area="Admin" asp-controller="Users" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#users" /></svg><div><h3 class="fs-6">Người dùng</h3><p class="small text-muted mb-0">Quản lý tài khoản và quyền kiểm định.</p></div><span aria-hidden="true">→</span></a></div>
+        <div class="col-md-6 col-xl-4"><a class="panel admin-quick-link h-100" asp-area="Admin" asp-controller="HelpDesk" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#message" /></svg><div><h3 class="fs-6">Hỗ trợ khách hàng</h3><p class="small text-muted mb-0">Tiếp nhận và trả lời yêu cầu trợ giúp.</p></div><span aria-hidden="true">→</span></a></div>
+    }
+    @if (canManageWallets)
+    {
+        <div class="col-md-6 col-xl-4"><a class="panel admin-quick-link h-100" asp-area="Admin" asp-controller="Wallets" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#wallet" /></svg><div><h3 class="fs-6">Ví & rút tiền</h3><p class="small text-muted mb-0">Đối soát số dư và xử lý yêu cầu rút tiền.</p></div><span aria-hidden="true">→</span></a></div>
+        <div class="col-md-6 col-xl-4"><a class="panel admin-quick-link h-100" asp-area="Admin" asp-controller="Reports" asp-action="Revenue"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#chart" /></svg><div><h3 class="fs-6">Báo cáo doanh thu</h3><p class="small text-muted mb-0">Xem hoa hồng và thu nhập của người ký gửi.</p></div><span aria-hidden="true">→</span></a></div>
+    }
+    @if (canReadAudit)
+    {
+        <div class="col-md-6 col-xl-4"><a class="panel admin-quick-link h-100" asp-area="Admin" asp-controller="Audit" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#shield" /></svg><div><h3 class="fs-6">Lịch sử hoạt động</h3><p class="small text-muted mb-0">Tra cứu các thao tác đã được ghi nhận.</p></div><span aria-hidden="true">→</span></a></div>
     }
 </div>

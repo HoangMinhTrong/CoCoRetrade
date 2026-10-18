@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CoCoReTrade.Web.Controllers.Api.V1;
 
 public sealed record PaymentConfirmation(string Reference);
+public sealed record ReturnedDeliveryConfirmation(bool ItemReturnedToStore);
 
 [ApiController]
 [Authorize(Policy = StaffPermissions.ManageOrders)]
@@ -33,6 +34,9 @@ public sealed class AdminOrdersController(IAdminOrderService orders) : Controlle
     [HttpPost("{id:guid}/cancel")]
     public Task<ActionResult<OrderDto>> Cancel(Guid id, CancellationToken ct) =>
         Execute(() => orders.CancelAsync(id, AdminId, ct));
+    [HttpPost("{id:guid}/return-undelivered")]
+    public Task<ActionResult<OrderDto>> ReturnUndelivered(Guid id, [FromBody] ReturnedDeliveryConfirmation request, CancellationToken ct) =>
+        Execute(() => orders.ReturnUndeliveredAsync(id, AdminId, request.ItemReturnedToStore, ct));
     private async Task<ActionResult<OrderDto>> Execute(Func<Task<OrderDto>> action)
     {
         try { return Ok(await action()); }

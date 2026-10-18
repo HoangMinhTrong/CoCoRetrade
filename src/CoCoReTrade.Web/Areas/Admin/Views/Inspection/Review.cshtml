@@ -9,88 +9,106 @@
     var passed = detail.CanPublish;
     ViewData["Title"] = "Kiểm định " + p.ConsignmentCode;
 }
-<div class="mt-4 mb-3"><a asp-action="Index">← Danh sách chờ duyệt</a></div>
-<div class="eyebrow">Phiếu ký gửi @p.ConsignmentCode</div>
-<h1 class="page-title mt-1">@p.Name</h1>
-<p class="subtitle">Người bán: @detail.SellerName · Tình trạng khai báo: @p.DeclaredCondition%</p>
+<a class="d-inline-flex align-items-center gap-2 mb-3 small" asp-action="Index">← Danh sách chờ duyệt</a>
+<header class="admin-page-header">
+    <div><div class="eyebrow">Phiếu ký gửi <span class="admin-code">@p.ConsignmentCode</span></div><h1 class="page-title">@p.Name</h1><p class="subtitle mb-0">Người ký gửi: <strong>@detail.SellerName</strong> · Độ mới khai báo: @p.DeclaredCondition%</p></div>
+    <span class="admin-status @(passed ? "admin-status--success" : "admin-status--warning")">@(passed ? "Đạt kiểm định" : "Chờ kết quả kiểm định")</span>
+</header>
 <div class="row g-4 mb-5">
     <div class="col-lg-5">
-        <div class="panel">
-            <h2 class="display-serif fs-4">Ảnh ký gửi và kiểm định</h2>
-            <div class="row row-cols-2 g-2 mt-1">
+        <section class="panel">
+            <div class="admin-section-heading"><h2 class="fs-5 mb-1">Ảnh sản phẩm</h2><p class="small text-muted mb-0">Đối chiếu ảnh ký gửi với hiện vật đang kiểm tra.</p></div>
+            <div class="row row-cols-2 g-2">
                 @foreach (var image in p.ImageIds)
-                { <div class="col"><img class="w-100 rounded" style="aspect-ratio:4/5;object-fit:cover" src="/images/@image" alt="Ảnh sản phẩm" />
-                    @if (canInspect) { <form asp-action="Cover" asp-route-id="@p.Id" method="post" class="mt-1"><input type="hidden" name="imageId" value="@image" /><input type="hidden" name="expectedRowVersion" value="@detail.RowVersion" /><button class="btn btn-outline-wine btn-sm w-100" type="submit">@(image == p.ImageIds[0] ? "✓ Ảnh bìa" : "Chọn làm ảnh bìa")</button></form> }
-                </div> }
+                {
+                    <div class="col">
+                        <img class="w-100 rounded" style="aspect-ratio:4/5;object-fit:cover" src="/images/@image" alt="Ảnh kiểm tra của @p.Name" loading="lazy" />
+                        @if (canInspect)
+                        {
+                            <form asp-action="Cover" asp-route-id="@p.Id" method="post" class="mt-2"><input type="hidden" name="imageId" value="@image" /><input type="hidden" name="expectedRowVersion" value="@detail.RowVersion" /><button class="btn btn-outline-wine btn-sm w-100" type="submit">@(image == p.ImageIds[0] ? "✓ Ảnh bìa hiện tại" : "Chọn làm ảnh bìa")</button></form>
+                        }
+                    </div>
+                }
             </div>
             <div class="divider"></div>
-            <div class="spec-row"><span>Mã ký gửi</span><strong>@p.ConsignmentCode</strong></div>
-            <div class="spec-row"><span>SKU kho</span><strong>@(string.IsNullOrEmpty(p.Sku) ? "Chưa cấp" : p.Sku)</strong></div>
-            @if (!string.IsNullOrEmpty(p.Sku)) { <a class="btn btn-outline-wine mt-3" asp-action="Label" asp-route-id="@p.Id" target="_blank">In tem SKU</a> }
-        </div>
+            <div class="spec-row"><span>Mã chờ duyệt</span><strong class="admin-code">@p.ConsignmentCode</strong></div>
+            <div class="spec-row"><span>SKU chính thức</span><strong>@(string.IsNullOrEmpty(p.Sku) ? "Được cấp khi đăng bán" : p.Sku)</strong></div>
+            @if (!string.IsNullOrEmpty(p.Sku)) { <a class="btn btn-outline-wine w-100 mt-3" asp-action="Label" asp-route-id="@p.Id" target="_blank" rel="noopener">In tem mã sản phẩm ↗</a> }
+        </section>
         @if (detail.Inspections.Count > 0)
         {
-            <div class="panel mt-3"><h2 class="display-serif fs-4">Lịch sử kiểm định</h2>
-            @foreach (var item in detail.Inspections)
-            {
-                <div class="border-top py-3">
-                    <div class="d-flex justify-content-between"><strong>@(item.Passed ? "Đạt" : "Không đạt")</strong><span class="small text-muted">@item.CreatedAtUtc.ToString("dd/MM/yyyy HH:mm") UTC</span></div>
-                    <div class="small">@item.Brand · @item.Size · @item.VerifiedCondition%</div>
-                    <p class="mb-0 mt-1">@item.Notes</p>
-                </div>
-            }
-            </div>
+            <section class="panel mt-3">
+                <h2 class="fs-5 mb-3">Lịch sử kiểm định <span class="text-muted small">(@detail.Inspections.Count)</span></h2>
+                @foreach (var item in detail.Inspections)
+                {
+                    <div class="border-top py-3">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2"><span class="admin-status @(item.Passed ? "admin-status--success" : "admin-status--danger")">@(item.Passed ? "Đạt yêu cầu" : "Không đạt")</span><span class="small text-muted">@item.CreatedAtUtc.AddHours(7).ToString("dd/MM/yyyy HH:mm")</span></div>
+                        <div class="small">@item.Brand · @UiText.For(item.Size) · Độ mới @item.VerifiedCondition%</div>
+                        @if (!string.IsNullOrWhiteSpace(item.Notes)) { <p class="mb-0 mt-2 small text-muted">@item.Notes</p> }
+                    </div>
+                }
+            </section>
         }
     </div>
     <div class="col-lg-7">
         @if (isOwnListing)
         {
-            <div class="alert alert-warning" role="alert">
-                Bạn là người đăng bán sản phẩm này nên không thể tự kiểm định. Hãy nhờ một tài khoản Inspector hoặc Admin khác kiểm định hiện vật.
-            </div>
+            <div class="alert alert-warning" role="alert">Bạn là người đăng bán sản phẩm này nên không thể tự kiểm định. Hãy nhờ một kiểm định viên hoặc quản trị viên khác kiểm định hiện vật.</div>
         }
         @if (canInspect)
         {
             <form asp-action="Record" asp-route-id="@p.Id" method="post" enctype="multipart/form-data" class="panel mb-3">
                 <input asp-for="ProductId" type="hidden" /><input asp-for="ExpectedRowVersion" type="hidden" />
-                <h2 class="display-serif fs-4 mb-3">Ghi kiểm định thực tế</h2>
-                <div asp-validation-summary="All" class="text-danger"></div>
-                <div class="row g-3">
-                    <div class="col-sm-8"><label asp-for="Name" class="form-label"></label><input asp-for="Name" class="form-control" /></div>
-                    <div class="col-sm-4"><label asp-for="Brand" class="form-label"></label><input asp-for="Brand" class="form-control" /></div>
-                    <div class="col-sm-6"><label asp-for="Category" class="form-label"></label><input asp-for="Category" class="form-control" /></div>
-                    <div class="col-sm-6"><label asp-for="Size" class="form-label"></label><input asp-for="Size" class="form-control" /></div>
-                    <div class="col-sm-4"><label asp-for="VerifiedCondition" class="form-label"></label><input asp-for="VerifiedCondition" type="number" min="50" max="100" class="form-control" /></div>
-                    <div class="col-sm-4"><label asp-for="OriginalPrice" class="form-label"></label><input asp-for="OriginalPrice" type="number" min="1" step="1" class="form-control" /></div>
-                    <div class="col-sm-4"><label asp-for="AskingPrice" class="form-label"></label><input asp-for="AskingPrice" type="number" min="1" step="1" class="form-control" /></div>
-                    <div class="col-12"><label asp-for="Notes" class="form-label"></label><textarea asp-for="Notes" rows="3" required minlength="3" class="form-control"></textarea></div>
-                    <div class="col-12"><label asp-for="InspectionImages" class="form-label"></label><input asp-for="InspectionImages" type="file" accept="image/jpeg,image/png,image/webp" multiple class="form-control" /><small class="form-text">Tối đa 10 ảnh, mỗi ảnh tối đa 5 MB.</small></div>
-                    <div class="col-12"><div class="form-check"><input asp-for="Passed" class="form-check-input" /><label asp-for="Passed" class="form-check-label">Hiện vật đạt kiểm định</label></div></div>
-                    <div class="col-12"><button class="btn btn-wine w-100" type="submit">Lưu kết quả kiểm định</button></div>
-                </div>
+                <div class="admin-section-heading"><div class="eyebrow">Bước 1 · Kiểm tra hiện vật</div><h2 class="fs-4 mt-2 mb-1">Ghi kết quả kiểm định</h2><p class="small text-muted mb-0">Cập nhật thông tin đúng với sản phẩm thực tế.</p></div>
+                <div asp-validation-summary="All" class="text-danger" role="alert"></div>
+                <fieldset class="admin-form-section">
+                    <legend class="fs-6 fw-semibold">Thông tin sản phẩm</legend>
+                    <div class="row g-3">
+                        <div class="col-sm-8"><label asp-for="Name" class="form-label"></label><input asp-for="Name" class="form-control" /><span asp-validation-for="Name" class="small text-danger"></span></div>
+                        <div class="col-sm-4"><label asp-for="Brand" class="form-label"></label><input asp-for="Brand" class="form-control" /><span asp-validation-for="Brand" class="small text-danger"></span></div>
+                        <div class="col-sm-6"><label asp-for="Category" class="form-label"></label><input asp-for="Category" class="form-control" /><span asp-validation-for="Category" class="small text-danger"></span></div>
+                        <div class="col-sm-6"><label asp-for="Size" class="form-label"></label><input asp-for="Size" class="form-control" /><span asp-validation-for="Size" class="small text-danger"></span></div>
+                    </div>
+                </fieldset>
+                <fieldset class="admin-form-section">
+                    <legend class="fs-6 fw-semibold">Độ mới & giá bán</legend>
+                    <div class="row g-3">
+                        <div class="col-sm-4"><label asp-for="VerifiedCondition" class="form-label"></label><div class="input-group"><input asp-for="VerifiedCondition" type="number" min="50" max="100" class="form-control" /><span class="input-group-text">%</span></div><span asp-validation-for="VerifiedCondition" class="small text-danger"></span></div>
+                        <div class="col-sm-4"><label asp-for="OriginalPrice" class="form-label"></label><input asp-for="OriginalPrice" type="number" min="1" step="1" class="form-control" /><small class="form-text">Đơn vị: VNĐ</small><span asp-validation-for="OriginalPrice" class="small text-danger"></span></div>
+                        <div class="col-sm-4"><label asp-for="AskingPrice" class="form-label"></label><input asp-for="AskingPrice" type="number" min="1" step="1" class="form-control" /><small class="form-text">Đơn vị: VNĐ</small><span asp-validation-for="AskingPrice" class="small text-danger"></span></div>
+                    </div>
+                </fieldset>
+                <fieldset class="admin-form-section">
+                    <legend class="fs-6 fw-semibold">Bổ sung thông tin <span class="small text-muted fw-normal">· Không bắt buộc</span></legend>
+                    <div class="mb-3"><label asp-for="Notes" class="form-label">Ghi chú kiểm định</label><textarea asp-for="Notes" rows="3" maxlength="2000" class="form-control" placeholder="Đặc điểm, vết sờn hoặc thông tin cần lưu ý..."></textarea><span asp-validation-for="Notes" class="small text-danger"></span></div>
+                    <div><label asp-for="InspectionImages" class="form-label">Ảnh kiểm định bổ sung</label><input asp-for="InspectionImages" type="file" accept="image/jpeg,image/png,image/webp" multiple class="form-control" /><small class="form-text">Tối đa 10 ảnh JPEG, PNG hoặc WebP; mỗi ảnh tối đa 5 MB.</small><span asp-validation-for="InspectionImages" class="small text-danger"></span></div>
+                </fieldset>
+                <div class="form-check mb-4"><input asp-for="Passed" class="form-check-input" /><label asp-for="Passed" class="form-check-label fw-semibold">Hiện vật đạt kiểm định</label></div>
+                <button class="btn btn-wine w-100" type="submit">Lưu kết quả kiểm định</button>
             </form>
         }
         @if (canPublish && passed)
         {
-            <form asp-action="Publish" asp-route-id="@p.Id" method="post" class="panel mb-3">
+            <form asp-action="Publish" asp-route-id="@p.Id" method="post" class="panel admin-publish-panel mb-3">
                 <input type="hidden" name="ExpectedRowVersion" value="@detail.RowVersion" />
-                <input type="hidden" name="ConfirmedSku" value="@p.Sku" />
-                <h2 class="display-serif fs-4">Xác nhận đăng bán</h2>
-                <p>SKU <strong>@p.Sku</strong> đã cấp sau kiểm định đạt. Sản phẩm sẽ xuất hiện công khai khi xác nhận.</p>
-                <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="PhysicalItemConfirmed" value="true" id="confirmItem" required />
-                    <label class="form-check-label" for="confirmItem">Tôi đã đối chiếu SKU trên tem với hiện vật.</label></div>
-                <button class="btn btn-wine" type="submit">Duyệt & đăng bán</button>
+                <div class="eyebrow">Bước 2 · Đưa sản phẩm lên cửa hàng</div>
+                <h2 class="fs-4 mt-2">Xác nhận đăng bán</h2>
+                <p class="small text-muted">CoCo sẽ cấp SKU chính thức và hiển thị sản phẩm cho khách mua sau khi bạn xác nhận.</p>
+                <div class="form-check mb-4"><input class="form-check-input" type="checkbox" name="PhysicalItemConfirmed" value="true" id="confirmItem" required /><label class="form-check-label" for="confirmItem">Tôi đã kiểm tra hiện vật và xác nhận thông tin đạt yêu cầu.</label></div>
+                <button class="btn btn-wine w-100" type="submit"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#check" /></svg> Duyệt & đăng bán</button>
             </form>
         }
         @if (canReject && detail.Inspections.Count > 0)
         {
-            <form asp-action="Reject" asp-route-id="@p.Id" method="post" class="panel">
-                <input type="hidden" name="ExpectedRowVersion" value="@detail.RowVersion" />
-                <h2 class="display-serif fs-4">Từ chối ký gửi</h2>
-                <label for="reason" class="form-label">Lý do gửi người bán</label>
-                <textarea id="reason" name="Reason" rows="2" required minlength="5" class="form-control"></textarea>
-                <button type="submit" class="btn btn-outline-danger mt-3">Từ chối</button>
-            </form>
+            <details class="panel">
+                <summary class="fw-semibold">Sản phẩm không phù hợp? Từ chối ký gửi</summary>
+                <form asp-action="Reject" asp-route-id="@p.Id" method="post" class="mt-3">
+                    <input type="hidden" name="ExpectedRowVersion" value="@detail.RowVersion" />
+                    <p class="small text-muted">Người bán sẽ nhận được thông báo kèm lý do từ chối.</p>
+                    <label for="reason" class="form-label">Lý do gửi người bán</label><textarea id="reason" name="Reason" rows="2" required minlength="5" class="form-control"></textarea>
+                    <button type="submit" class="btn btn-outline-danger mt-3">Từ chối ký gửi</button>
+                </form>
+            </details>
         }
     </div>
 </div>

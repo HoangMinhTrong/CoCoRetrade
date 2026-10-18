@@ -5,8 +5,8 @@ namespace CoCoReTrade.Application;
 public interface IProductLifecycleService
 {
     Task<Inspection> InspectAsync(string actorId, Product product, InspectionSubmission request,
-        string? sku, IReadOnlyCollection<ProductImage> images, DateTime nowUtc, CancellationToken ct);
-    Task PublishAsync(string actorId, Product product, DateTime nowUtc, CancellationToken ct);
+        IReadOnlyCollection<ProductImage> images, DateTime nowUtc, CancellationToken ct);
+    Task PublishAsync(string actorId, Product product, string sku, DateTime nowUtc, CancellationToken ct);
     Task RejectAsync(string actorId, Product product, string reason, CancellationToken ct);
     void ReserveForOrder(Product product, Order order);
 }
@@ -14,17 +14,17 @@ public interface IProductLifecycleService
 public sealed class ProductLifecycleService(IStaffPermissionChecker permissions) : IProductLifecycleService
 {
     public async Task<Inspection> InspectAsync(string actorId, Product product, InspectionSubmission request,
-        string? sku, IReadOnlyCollection<ProductImage> images, DateTime nowUtc, CancellationToken ct)
+        IReadOnlyCollection<ProductImage> images, DateTime nowUtc, CancellationToken ct)
     {
         await permissions.EnsureAsync(actorId, StaffPermissions.Inspect, ct);
         return product.RecordInspection(actorId, request.Passed, request.Name, request.Brand, request.Category,
             request.Size, request.OriginalPrice, request.AskingPrice, request.VerifiedCondition,
-            request.Notes, sku, images, nowUtc);
+            request.Notes, images, nowUtc);
     }
-    public async Task PublishAsync(string actorId, Product product, DateTime nowUtc, CancellationToken ct)
+    public async Task PublishAsync(string actorId, Product product, string sku, DateTime nowUtc, CancellationToken ct)
     {
         await permissions.EnsureAsync(actorId, StaffPermissions.Publish, ct);
-        product.Publish(nowUtc);
+        product.Publish(sku, nowUtc);
     }
     public async Task RejectAsync(string actorId, Product product, string reason, CancellationToken ct)
     {
@@ -35,7 +35,7 @@ public sealed class ProductLifecycleService(IStaffPermissionChecker permissions)
     {
         if (order.ProductId != product.Id || order.Status != OrderStatus.PendingProcessing ||
             order.PaymentStatus != PaymentStatus.Unpaid)
-            throw new InvalidOperationException("Only a newly created unpaid order can reserve its product.");
+            throw new InvalidOperationException("Chỉ đơn mới chưa thanh toán mới được giữ sản phẩm.");
         product.Reserve();
     }
 }

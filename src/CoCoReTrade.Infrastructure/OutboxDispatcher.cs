@@ -33,7 +33,7 @@ public sealed class OutboxDispatcher(IOutboxRepository repository,
                 }
                 await repository.MarkSentAsync(item.Id, item.LeaseToken, clock.GetUtcNow().UtcDateTime, ct);
                 sent++;
-                logger.LogInformation("Dispatched outbox message {OutboxId} through {Channel}", item.Id, item.Channel);
+                logger.LogInformation("Đã gửi thông báo {OutboxId} qua kênh {Channel}", item.Id, item.Channel);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex)
@@ -41,7 +41,7 @@ public sealed class OutboxDispatcher(IOutboxRepository repository,
                 var delay = TimeSpan.FromMinutes(Math.Min(60, 1 << Math.Min(item.AttemptCount, 6)));
                 await repository.DeferAsync(item.Id, item.LeaseToken,
                     clock.GetUtcNow().UtcDateTime.Add(delay), ex.GetType().Name, ct);
-                logger.LogWarning(ex, "Outbox delivery {OutboxId} through {Channel} failed", item.Id, item.Channel);
+                logger.LogWarning(ex, "Gửi thông báo {OutboxId} qua kênh {Channel} thất bại", item.Id, item.Channel);
             }
         }
         return sent;

@@ -12,10 +12,10 @@ else
     @foreach (var offer in Model)
     {
         <div class="col-md-6"><a class="panel d-block h-100 offer-card" asp-action="Details" asp-route-id="@offer.Id">
-            <div class="d-flex justify-content-between gap-2"><span class="eyebrow">@offer.ProductSku</span><span class="status-pill @offer.Status">@offer.Status</span></div>
+            <div class="d-flex justify-content-between gap-2"><span class="eyebrow">@offer.ProductSku</span><span class="status-pill @offer.Status">@UiText.For(offer.Status)</span></div>
             <h2 class="display-serif fs-4 mt-2 mb-1">@offer.ProductName</h2>
             <p class="subtitle small mb-2">@(offer.BuyerId == me ? "Bạn là người mua" : "Bạn là người bán") · Hạn @offer.ExpiresAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
-            <div class="d-flex justify-content-between align-items-end"><strong class="product-price">@offer.CurrentPrice.ToString("N0")đ</strong><span>Chi tiết →</span></div>
+            <div class="d-flex justify-content-between align-items-end"><strong class="product-price">@offer.CurrentPrice.ToString("N0") VNĐ</strong><span>Chi tiết →</span></div>
         </a></div>
     }
     </div>

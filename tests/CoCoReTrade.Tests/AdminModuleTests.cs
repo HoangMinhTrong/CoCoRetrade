@@ -34,7 +34,7 @@ public sealed class AdminModuleTests
         var version = Convert.ToBase64String(product.RowVersion);
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.PendingAsync("buyer", null, default));
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.InspectAsync("buyer", product.Id, Submission(version), default));
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.PublishAsync("inspector", product.Id, version, "", true, default));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.PublishAsync("inspector", product.Id, version, true, default));
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.RejectAsync("inspector", product.Id, "Damaged item", version, default));
         Assert.Equal(ProductStatus.PendingApproval, product.Status);
         Assert.Empty(store.Audits);
@@ -44,11 +44,11 @@ public sealed class AdminModuleTests
     public void DomainRequiresPhysicalInspectionAndDisallowsSellerSelfInspection()
     {
         var product = NewProduct("CG-2026-000009");
-        Assert.Throws<InvalidOperationException>(() => product.Publish(DateTime.UtcNow));
+        Assert.Throws<InvalidOperationException>(() => product.Publish("CC-2026-000009", DateTime.UtcNow));
         Assert.Throws<InvalidOperationException>(() => product.Reject("Not acceptable"));
         Assert.Throws<UnauthorizedAccessException>(() => product.RecordInspection("seller", true,
             product.Name, product.Brand, product.Category, product.Size, product.OriginalPrice,
-            product.AskingPrice, 95, "Self inspection", "CC-2026-000009", [], DateTime.UtcNow));
+            product.AskingPrice, 95, "Self inspection", [], DateTime.UtcNow));
     }
 
     [Fact]
@@ -56,9 +56,8 @@ public sealed class AdminModuleTests
     {
         var product = NewProduct("CG-2026-000011");
         product.RecordInspection("inspector", true, product.Name, product.Brand, product.Category,
-            product.Size, product.OriginalPrice, product.AskingPrice, 95, "Physical item checked",
-            "CC-2026-000011", [], DateTime.UtcNow);
-        product.Publish(DateTime.UtcNow);
+            product.Size, product.OriginalPrice, product.AskingPrice, 95, "Physical item checked", [], DateTime.UtcNow);
+        product.Publish("CC-2026-000011", DateTime.UtcNow);
         var (service, _) = Setup(product);
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.GetAsync("inspector", product.Id, default));
         Assert.NotNull(await service.GetAsync("admin", product.Id, default));
@@ -73,20 +72,20 @@ public sealed class AdminModuleTests
             Submission(Convert.ToBase64String(product.RowVersion)), default);
         Assert.Equal(ProductStatus.PendingApproval, product.Status);
         Assert.Equal(92, product.VerifiedCondition);
-        Assert.Matches(@"^CC-\d{4}-\d{6}$", product.Sku);
+        Assert.Empty(product.Sku);
         Assert.True(inspected.CanPublish);
         Assert.Single(store.TrackedInspections);
         Assert.Single(store.Audits);
         Assert.Empty(store.Notifications);
 
         await Assert.ThrowsAsync<ProductConcurrencyException>(() => service.PublishAsync("admin", product.Id,
-            Convert.ToBase64String(new byte[] { 1 }), product.Sku, true, default));
+            Convert.ToBase64String(new byte[] { 1 }), true, default));
         await Assert.ThrowsAsync<ArgumentException>(() => service.PublishAsync("admin", product.Id,
-            inspected.RowVersion, "CC-2026-999999", true, default));
-        await Assert.ThrowsAsync<ArgumentException>(() => service.PublishAsync("admin", product.Id,
-            inspected.RowVersion, product.Sku, false, default));
-        var published = await service.PublishAsync("admin", product.Id, inspected.RowVersion, product.Sku, true, default);
+            inspected.RowVersion, false, default));
+        Assert.Empty(product.Sku);
+        var published = await service.PublishAsync("admin", product.Id, inspected.RowVersion, true, default);
         Assert.Equal(ProductStatus.Active, published.Product.Status);
+        Assert.Matches(@"^CC-\d{4}-\d{6}$", published.Product.Sku);
         Assert.Equal(2, store.Audits.Count);
         Assert.Single(store.Notifications);
         Assert.Equal("seller", store.Notifications.Single().UserId);
@@ -102,7 +101,7 @@ public sealed class AdminModuleTests
         Assert.False(inspected.CanPublish);
         Assert.Empty(product.Sku);
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.PublishAsync("admin", product.Id,
-            inspected.RowVersion, "CC-2026-000001", true, default));
+            inspected.RowVersion, true, default));
         await Assert.ThrowsAsync<ArgumentException>(() => service.RejectAsync("admin", product.Id, "bad", inspected.RowVersion, default));
         var rejected = await service.RejectAsync("admin", product.Id, "Fabric has extensive damage", inspected.RowVersion, default);
         Assert.Equal(ProductStatus.Rejected, rejected.Product.Status);
@@ -126,13 +125,17 @@ public sealed class AdminModuleTests
     }
 
     [Fact]
-    public async Task InventorySkusAreUniqueAndSequenceHandlesParallelAllocations()
+    public async Task ProductSkusAreAssignedOnlyOnPublishAndRemainUnique()
     {
         var first = NewProduct("CG-2026-000004");
         var second = NewProduct("CG-2026-000005");
         var (service, store) = Setup(first, second);
-        await service.InspectAsync("inspector", first.Id, Submission(Convert.ToBase64String(first.RowVersion)), default);
-        await service.InspectAsync("inspector", second.Id, Submission(Convert.ToBase64String(second.RowVersion)), default);
+        var firstInspection = await service.InspectAsync("inspector", first.Id, Submission(Convert.ToBase64String(first.RowVersion)), default);
+        var secondInspection = await service.InspectAsync("inspector", second.Id, Submission(Convert.ToBase64String(second.RowVersion)), default);
+        Assert.Empty(first.Sku);
+        Assert.Empty(second.Sku);
+        await service.PublishAsync("admin", first.Id, firstInspection.RowVersion, true, default);
+        await service.PublishAsync("admin", second.Id, secondInspection.RowVersion, true, default);
         Assert.NotEqual(first.Sku, second.Sku);
         var allocations = await Task.WhenAll(Enumerable.Range(0, 50).Select(_ => store.NextAsync(default)));
         Assert.Equal(allocations.Length, allocations.Distinct().Count());

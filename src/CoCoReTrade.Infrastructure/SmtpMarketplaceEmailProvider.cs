@@ -9,8 +9,8 @@ public sealed class SmtpMarketplaceEmailProvider(IConfiguration configuration) :
 {
     public async Task SendAsync(Guid messageId, string recipientEmail, string category, string message, CancellationToken ct)
     {
-        var host = configuration["Smtp:Host"] ?? throw new InvalidOperationException("SMTP host is not configured.");
-        var from = configuration["Smtp:From"] ?? throw new InvalidOperationException("SMTP sender is not configured.");
+        var host = configuration["Smtp:Host"] ?? throw new InvalidOperationException("Chưa cấu hình máy chủ SMTP.");
+        var from = configuration["Smtp:From"] ?? throw new InvalidOperationException("Chưa cấu hình địa chỉ gửi SMTP.");
         using var client = new SmtpClient(host, int.TryParse(configuration["Smtp:Port"], out var port) ? port : 587)
         {
             EnableSsl = true,

@@ -43,6 +43,41 @@ public sealed class ProfileController(INotificationCenter notifications, ISocial
         catch (KeyNotFoundException) { return NotFound(); }
         return RedirectToAction(nameof(Notifications));
     }
+    [HttpGet]
+    public async Task<IActionResult> OpenNotification(Guid id, CancellationToken ct)
+    {
+        NotificationDto item;
+        try { item = await notifications.OpenAsync(UserId, id, ct); }
+        catch (KeyNotFoundException) { return NotFound(); }
+
+        if (item.OfferId is Guid offerId)
+            return RedirectToAction("Details", "Offers", new { id = offerId });
+        if (item.OrderId is Guid orderId)
+            return RedirectToAction("Details", "Orders", new { id = orderId });
+        if (item.ConversationId is Guid conversationId)
+            return RedirectToAction("Details", "Messages", new { id = conversationId });
+        if (item.ProductId is Guid productId)
+        {
+            if (item.Category.Equals("Listings", StringComparison.OrdinalIgnoreCase) &&
+                (User.IsInRole("Admin") || User.IsInRole("Inspector")))
+                return RedirectToAction("Review", "Inspection", new { area = "Admin", id = productId });
+            return RedirectToAction("Details", "Shop", new { id = productId });
+        }
+        if (item.Category.Equals("Cart", StringComparison.OrdinalIgnoreCase) ||
+            item.Category.Equals("Carts", StringComparison.OrdinalIgnoreCase))
+            return RedirectToAction("Index", "Cart");
+        if (item.Category.Equals("Messages", StringComparison.OrdinalIgnoreCase))
+            return RedirectToAction("Index", "Messages");
+        if (item.Category.Equals("Offers", StringComparison.OrdinalIgnoreCase))
+            return RedirectToAction("Index", "Offers");
+        if (item.Category.Equals("Orders", StringComparison.OrdinalIgnoreCase))
+            return RedirectToAction("Index", "Orders");
+        if (string.Equals(item.Category, "Wallets", StringComparison.OrdinalIgnoreCase))
+            return RedirectToAction("Wallet", "Profile");
+        if (string.Equals(item.Category, "Support", StringComparison.OrdinalIgnoreCase))
+            return RedirectToAction("Index", "Support");
+        return RedirectToAction(nameof(Notifications));
+    }
     public async Task<IActionResult> Saved(CancellationToken ct) => View(await social.SavedProductsAsync(UserId, ct));
     public async Task<IActionResult> Addresses(CancellationToken ct) => View(await addresses.ListAsync(UserId, ct));
     [HttpGet]
@@ -86,7 +121,8 @@ public sealed class ProfileController(INotificationCenter notifications, ISocial
         if (!ModelState.IsValid) { TempData["Error"] = "Kiểm tra số tiền và tài khoản nhận."; return RedirectToAction(nameof(Wallet)); }
         try
         {
-            await wallets.RequestWithdrawalAsync(UserId, form.RequestKey, form.Amount, form.BankAccountMasked, ct);
+            await wallets.RequestWithdrawalAsync(UserId, form.RequestKey, form.Amount,
+                form.BankAccountNumber, form.BankName, ct);
             TempData["Message"] = "Yêu cầu rút tiền đã được ghi nhận và đang chờ duyệt.";
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)

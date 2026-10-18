@@ -323,6 +323,9 @@ namespace CoCoReTrade.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -339,17 +342,24 @@ namespace CoCoReTrade.Infrastructure.Migrations
                     b.Property<Guid?>("OrderId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ConversationId");
+
                     b.HasIndex("OfferId");
 
                     b.HasIndex("OrderId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("UserId", "CreatedAtUtc");
 
                     b.ToTable("Notifications", (string)null);
                 });
@@ -519,6 +529,9 @@ namespace CoCoReTrade.Infrastructure.Migrations
                     b.Property<DateTime?>("PickupAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("PickupDeadlineAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("PreferredDeliveryWindow")
                         .HasMaxLength(24)
                         .HasColumnType("nvarchar(24)");
@@ -591,6 +604,9 @@ namespace CoCoReTrade.Infrastructure.Migrations
                         .HasFilter("[OfferId] IS NOT NULL");
 
                     b.HasIndex("PaymentConfirmedById");
+
+                    b.HasIndex("PickupDeadlineAtUtc")
+                        .HasFilter("[PickupDeadlineAtUtc] IS NOT NULL");
 
                     b.HasIndex("ProductId")
                         .IsUnique()
@@ -988,6 +1004,14 @@ namespace CoCoReTrade.Infrastructure.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
 
+                    b.Property<string>("BankAccountNumber")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("BankName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -1004,10 +1028,26 @@ namespace CoCoReTrade.Infrastructure.Migrations
                     b.Property<Guid>("RequestKey")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TransferReference")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("TransferredAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TransferredById")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<Guid>("WalletId")
                         .HasColumnType("uniqueidentifier");
@@ -1015,6 +1055,8 @@ namespace CoCoReTrade.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DecidedById");
+
+                    b.HasIndex("TransferredById");
 
                     b.HasIndex("WalletId", "RequestKey")
                         .IsUnique()
@@ -1362,6 +1404,11 @@ namespace CoCoReTrade.Infrastructure.Migrations
 
             modelBuilder.Entity("CoCoReTrade.Domain.MarketplaceNotification", b =>
                 {
+                    b.HasOne("CoCoReTrade.Domain.Conversation", null)
+                        .WithMany()
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CoCoReTrade.Domain.Offer", null)
                         .WithMany()
                         .HasForeignKey("OfferId")
@@ -1370,6 +1417,11 @@ namespace CoCoReTrade.Infrastructure.Migrations
                     b.HasOne("CoCoReTrade.Domain.Order", null)
                         .WithMany()
                         .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CoCoReTrade.Domain.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("CoCoReTrade.Infrastructure.ApplicationUser", null)
@@ -1550,6 +1602,11 @@ namespace CoCoReTrade.Infrastructure.Migrations
                     b.HasOne("CoCoReTrade.Infrastructure.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("DecidedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CoCoReTrade.Infrastructure.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("TransferredById")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("CoCoReTrade.Domain.Wallet", null)
