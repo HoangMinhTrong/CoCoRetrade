@@ -5,7 +5,7 @@
     var candidates = (IReadOnlyList<SellerPayoutCandidate>)ViewBag.Candidates;
 }
 <header class="admin-page-header"><div><div class="eyebrow">Tài chính CoCo</div><h1 class="page-title">Ví & rút tiền</h1><p class="subtitle mb-0">Đối soát tiền bán hàng, quản lý số dư và chuyển tiền cho người ký gửi.</p></div><a class="btn btn-outline-wine" asp-area="Admin" asp-controller="Reports" asp-action="Revenue"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#chart" /></svg> Báo cáo doanh thu</a></header>
-<nav class="d-flex flex-wrap gap-2 mb-4" aria-label="Các mục quản lý ví"><a class="btn btn-outline-wine btn-sm" href="#withdrawals">Yêu cầu rút tiền (@withdrawals.Count)</a><a class="btn btn-outline-wine btn-sm" href="#reconciliation">Đối soát (@candidates.Count)</a><a class="btn btn-outline-wine btn-sm" href="#wallets">Danh sách ví (@Model.Count)</a></nav>
+<nav class="d-flex flex-wrap gap-2 mb-4" aria-label="Các mục quản lý ví"><a class="btn btn-wine btn-sm" asp-action="Platform">Ví hoa hồng CoCo</a><a class="btn btn-outline-wine btn-sm" href="#withdrawals">Yêu cầu rút tiền (@withdrawals.Count)</a><a class="btn btn-outline-wine btn-sm" href="#reconciliation">Đối soát (@candidates.Count)</a><a class="btn btn-outline-wine btn-sm" href="#wallets">Danh sách ví (@Model.Count)</a></nav>
 
 <section id="withdrawals" class="mb-5">
     <div class="admin-section-heading"><h2 class="fs-4 mb-1">Yêu cầu rút tiền</h2><p class="small text-muted mb-0">Duyệt yêu cầu, thực hiện chuyển khoản rồi xác nhận bằng mã giao dịch.</p></div>

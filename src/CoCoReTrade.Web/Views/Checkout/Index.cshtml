@@ -25,7 +25,7 @@
         <div id="shippingPaymentNotice" class="alert alert-light border mt-3" hidden>Kiểm tra hàng khi người giao hàng đến. Nếu nhận hàng, thanh toán tiền mặt cho người giao hàng. Không cần chuyển khoản trước.</div>
         <div id="pickupFields" class="mt-3"><div class="alert alert-light border">Địa chỉ CoCo: <strong>@(shipping.CanPickup ? shipping.StoreAddress : "Chưa được cấu hình")</strong><br />
             @if (quote.OfferExpiresAtUtc.HasValue)
-            { <span>Nhận trong giờ mở cửa @shipping.OpeningHour:00–@shipping.ClosingHour:00, chậm nhất trước hạn giá thỏa thuận. Quá hạn chưa nhận và chưa thanh toán, đơn được hủy và giá trở về giá niêm yết.</span> }
+            { <span>Hẹn lấy trong giờ mở cửa @shipping.OpeningHour:00–@shipping.ClosingHour:00, trước hạn 24 giờ từ lúc chấp nhận giá. Sau khi bạn xác nhận đơn, CoCo tạm giữ món đồ và ẩn khỏi sàn. Quá hạn chưa nhận và chưa thanh toán, đơn được hủy và giá trở về giá niêm yết.</span> }
             else
             { <span>Giờ nhận: @shipping.OpeningHour:00–@shipping.ClosingHour:00, từ ngày mai đến 3 ngày tới.</span> }
             @if (ViewBag.StoreMapUrl is string mapUrl) { <br /><a href="@mapUrl" target="_blank" rel="noopener noreferrer">Xem đường đi trên bản đồ →</a> }
@@ -41,14 +41,14 @@
             <div class="col-12"><label asp-for="DeliveryNote" class="form-label"></label><textarea asp-for="DeliveryNote" rows="2" maxlength="500" class="form-control" placeholder="Hướng dẫn cho người giao hàng (nếu có)"></textarea></div></div>
             <p class="form-text mt-2">Giao nội thành: 20,000 VNĐ. Ngoại thành và liên tỉnh: 35,000 VNĐ. Phí được cập nhật theo địa chỉ bạn nhập.</p>
         </div>
-        <button class="btn btn-wine w-100 mt-4" type="submit">Xác nhận đặt hàng</button>
+        <button id="checkoutSubmit" class="btn btn-wine w-100 mt-4" type="submit">Xác nhận đặt hàng</button>
     </form>
 </div><div class="col-lg-5"><div class="panel checkout-summary">
     <div class="d-flex align-items-center gap-3 mb-3">
         @if (product?.ImageIds.Count > 0) { <img src="/images/@product.ImageIds[0]" alt="@quote.ProductName" style="width:76px;height:94px;object-fit:cover;border-radius:10px" /> }
         <div><div class="eyebrow">@quote.ProductSku</div><h2 class="mb-1">@quote.ProductName</h2><small class="text-muted">Kích cỡ @UiText.For(quote.ProductSize) · @(product?.VerifiedCondition ?? product?.DeclaredCondition)% độ mới</small></div>
     </div>
-    @if (quote.OfferExpiresAtUtc.HasValue) { <div class="alert alert-success small">Giá riêng của bạn có hiệu lực đến @(new DateTimeOffset(quote.OfferExpiresAtUtc.Value, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(shipping.StoreUtcOffsetHours)).ToString("dd/MM/yyyy HH:mm")) (giờ CoCo). Nếu tới lấy, hãy chọn giờ nhận trước mốc này. Nếu giao tận nơi, hãy đặt đơn trước mốc này.</div> }
+    @if (quote.OfferExpiresAtUtc.HasValue) { <div class="alert alert-success small">Giá riêng của bạn có hiệu lực đến @(new DateTimeOffset(quote.OfferExpiresAtUtc.Value, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(shipping.StoreUtcOffsetHours)).ToString("dd/MM/yyyy HH:mm")) (giờ Việt Nam). Nếu tới lấy, hãy chọn giờ nhận trước mốc này. Nếu giao tận nơi, hãy đặt đơn trước mốc này.</div> }
     <div class="spec-row"><span>Tiền hàng</span><strong>@quote.MerchandisePrice.ToString("N0") VNĐ</strong></div>
     <div class="spec-row" aria-live="polite"><span>Phí vận chuyển</span><strong id="shippingFee">@(quote.ShippingFeePending ? "Chọn tỉnh/thành và phường/xã" : quote.ShippingFee.ToString("N0") + " VNĐ")</strong></div>
     <div class="spec-row checkout-total fs-5" aria-live="polite"><span>Tổng thanh toán</span><strong id="totalAmount">@(quote.ShippingFeePending ? "—" : quote.TotalAmount.ToString("N0") + " VNĐ")</strong></div>
@@ -73,6 +73,7 @@ async function updateQuote(){
   document.getElementById('pickupPaymentNotice').hidden = delivery;
   document.getElementById('shippingPaymentNotice').hidden = !delivery;
   pickup.required = !delivery; for(const el of [province,ward,street]) el.required = delivery;
+  document.getElementById('checkoutSubmit').textContent = delivery ? 'Xác nhận đặt hàng' : 'Xác nhận hẹn lấy · tạm giữ món đồ';
   const feeEl = document.getElementById('shippingFee'), totalEl = document.getElementById('totalAmount');
   if(delivery && (!province.value.trim() || !ward.value.trim())){feeEl.textContent='Chọn tỉnh/thành và phường/xã';totalEl.textContent='—';return;}
   if(preview){const fee=delivery?35000:0;feeEl.textContent=money(fee);totalEl.textContent=money(merchandise+fee);return;}

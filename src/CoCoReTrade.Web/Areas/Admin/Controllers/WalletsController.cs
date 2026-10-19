@@ -7,7 +7,8 @@ namespace CoCoReTrade.Web.Areas.Admin.Controllers;
 
 [Area("Admin")]
 [Authorize(Policy = StaffPermissions.ManageWallets)]
-public sealed class WalletsController(IAdminWalletService wallets, IWalletService ledger) : Controller
+public sealed class WalletsController(IAdminWalletService wallets, IWalletService ledger,
+    IPlatformCommissionService platformCommissions) : Controller
 {
     private string ActorId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
     [HttpGet]
@@ -23,6 +24,9 @@ public sealed class WalletsController(IAdminWalletService wallets, IWalletServic
         var wallet = await wallets.DetailsAsync(ActorId, id, ct);
         return wallet is null ? NotFound() : View(wallet);
     }
+    [HttpGet]
+    public async Task<IActionResult> Platform(CancellationToken ct) =>
+        View(await platformCommissions.GetAsync(ActorId, ct));
     [HttpPost]
     public async Task<IActionResult> Credit(Guid orderId, bool confirmed, CancellationToken ct)
     {

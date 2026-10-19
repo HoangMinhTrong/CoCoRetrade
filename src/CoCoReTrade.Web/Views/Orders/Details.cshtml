@@ -12,8 +12,9 @@
     else
     {
         <div class="spec-row"><span>Người nhận</span><strong>@Model.RecipientName · @Model.RecipientPhone</strong></div>
-        @if (Model.Fulfillment == FulfillmentType.Pickup) { <div class="spec-row"><span>Giờ lấy tại CoCo</span><strong>@pickupAtStore</strong></div><div class="spec-row"><span>Địa chỉ CoCo khi đặt</span><strong>@Model.PickupAddress</strong></div>
-            @if (Model.PickupDeadlineAtUtc.HasValue) { <div class="alert alert-warning mt-3">Giá thỏa thuận áp dụng khi bạn đến nhận trước @(new DateTimeOffset(Model.PickupDeadlineAtUtc.Value, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(Shipping.StoreUtcOffsetHours)).ToString("dd/MM/yyyy HH:mm")) (giờ CoCo). Quá hạn chưa nhận và chưa thanh toán, đơn sẽ hủy và món đồ mở bán lại theo giá niêm yết.</div> }
+        @if (Model.Fulfillment == FulfillmentType.Pickup) { <div class="spec-row"><span>Giờ lấy tại CoCo</span><strong>@pickupAtStore (giờ Việt Nam)</strong></div><div class="spec-row"><span>Địa chỉ CoCo khi đặt</span><strong>@Model.PickupAddress</strong></div>
+            @if (Model.Status is OrderStatus.PendingProcessing or OrderStatus.ReadyForPickup) { <div class="alert alert-info mt-3">CoCo đang tạm giữ món đồ cho lịch lấy của bạn. Sản phẩm đã được ẩn khỏi cửa hàng.</div> }
+            @if (Model.PickupDeadlineAtUtc.HasValue) { <div class="alert alert-warning mt-3">Giá thỏa thuận áp dụng khi bạn đến nhận trước @(new DateTimeOffset(Model.PickupDeadlineAtUtc.Value, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(Shipping.StoreUtcOffsetHours)).ToString("dd/MM/yyyy HH:mm")) (giờ Việt Nam). Quá hạn chưa nhận và chưa thanh toán, đơn sẽ hủy và món đồ mở bán lại theo giá niêm yết.</div> }
         }
         else { <div class="spec-row"><span>Giao tới</span><strong>@Model.StreetAddress, @Model.Ward, @Model.Province</strong></div>
             @if (Model.PreferredDeliveryWindow.HasValue) { <div class="spec-row"><span>Khung giờ thuận tiện</span><strong>@Model.PreferredDeliveryWindow</strong></div> }

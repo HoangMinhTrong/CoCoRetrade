@@ -12,7 +12,7 @@
     <div class="spec-row"><span>Lượt gửi giá của người mua</span><strong>@Model.BuyerOffersUsed / 3</strong></div>
     @if (Model.Status == OfferStatus.Accepted)
     {
-        <div class="alert alert-success mt-4">Giá @Model.AcceptedPrice?.ToString("N0") VNĐ chỉ dành cho người mua này trong 24 giờ. Sản phẩm vẫn mở bán cho tới khi có đơn hàng.</div>
+        <div class="alert alert-success mt-4">Giá @Model.AcceptedPrice?.ToString("N0") VNĐ chỉ dành cho người mua này trong 24 giờ. Nếu chọn nhận tại CoCo, món đồ sẽ được tạm giữ sau khi người mua chọn giờ lấy và xác nhận đơn hàng.</div>
         @if ((bool?)ViewBag.PreviewMode == true) { <a asp-controller="Preview" asp-action="Checkout" class="btn btn-wine w-100">Xem màn hình đặt hàng →</a> }
         else if (me == Model.BuyerId)
         {
@@ -23,7 +23,7 @@
                 <a asp-controller="Checkout" asp-action="Index" asp-route-productId="@Model.ProductId" asp-route-offerId="@Model.Id" asp-route-fulfillment="Shipping" class="btn btn-outline-wine flex-fill">Giao hàng tận nơi</a>
             </div>
             @if (!Shipping.CanPickup) { <p class="form-text mt-2">Nhận tại CoCo sẽ mở khi cửa hàng cấu hình địa chỉ nhận hàng.</p> }
-            <p class="form-text mt-2">Nếu đặt nhận tại CoCo mà quá hạn chưa lấy và chưa thanh toán, đơn được hủy, món đồ mở bán lại theo giá niêm yết.</p>
+            <p class="form-text mt-2">Nếu chọn lấy tại CoCo, hãy hẹn giờ và xác nhận đơn. CoCo sẽ tạm giữ món đồ, ẩn khỏi sàn cho đến giờ hẹn. Quá hạn chưa lấy và chưa thanh toán, đơn được hủy và món đồ mở bán lại theo giá niêm yết.</p>
         }
     }
     else if (myTurn)

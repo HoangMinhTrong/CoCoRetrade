@@ -24,10 +24,10 @@
             <div class="border-top pt-3 mt-3">
                 <div class="small fw-semibold mb-2">Quyền truy cập</div>
                 <div class="d-flex flex-wrap gap-2">
-                    <form asp-action="Inspector" method="post"><input type="hidden" name="id" value="@user.Id" /><input type="hidden" name="enabled" value="@(!user.IsInspector)" /><button class="btn btn-sm btn-outline-wine" type="submit">@(user.IsInspector ? "Thu hồi quyền kiểm định" : "Cấp quyền kiểm định")</button></form>
+                    <form asp-area="Admin" asp-controller="Users" asp-action="Inspector" method="post"><input type="hidden" name="id" value="@user.Id" /><input type="hidden" name="enabled" value="@(user.IsInspector ? "false" : "true")" /><button class="btn btn-sm btn-outline-wine" type="submit">@(user.IsInspector ? "Thu hồi quyền kiểm định" : "Cấp quyền kiểm định")</button></form>
                     @if (user.IsInspector)
                     {
-                        <form asp-action="PublishGrant" method="post"><input type="hidden" name="id" value="@user.Id" /><input type="hidden" name="enabled" value="@(!user.HasDirectPublishGrant)" /><button class="btn btn-sm btn-outline-wine" type="submit">@(user.HasDirectPublishGrant ? "Thu hồi quyền đăng bán" : "Cấp quyền đăng bán")</button></form>
+                        <form asp-area="Admin" asp-controller="Users" asp-action="PublishGrant" method="post"><input type="hidden" name="id" value="@user.Id" /><input type="hidden" name="enabled" value="@(user.HasDirectPublishGrant ? "false" : "true")" /><button class="btn btn-sm btn-outline-wine" type="submit">@(user.HasDirectPublishGrant ? "Thu hồi quyền đăng bán" : "Cấp quyền đăng bán")</button></form>
                     }
                 </div>
             </div>
@@ -39,7 +39,7 @@
                     <div class="col-8"><label class="form-label small" for="reason-@user.Id">Lý do điều chỉnh</label><input id="reason-@user.Id" class="form-control form-control-sm" name="reason" placeholder="Nhập lý do" minlength="5" maxlength="500" required /></div>
                     <div class="col-12"><button class="btn btn-outline-wine btn-sm" type="submit">Lưu điểm tín nhiệm</button></div>
                 </form>
-                <form asp-action="Lock" method="post" class="mt-3"><input type="hidden" name="id" value="@user.Id" /><input type="hidden" name="locked" value="@(!user.IsLocked)" /><button class="btn btn-sm @(user.IsLocked ? "btn-outline-success" : "btn-outline-danger")" type="submit">@(user.IsLocked ? "Mở khóa tài khoản" : "Khóa tài khoản")</button></form>
+                <form asp-area="Admin" asp-controller="Users" asp-action="Lock" method="post" class="mt-3"><input type="hidden" name="id" value="@user.Id" /><input type="hidden" name="locked" value="@(user.IsLocked ? "false" : "true")" /><button class="btn btn-sm @(user.IsLocked ? "btn-outline-success" : "btn-outline-danger")" type="submit">@(user.IsLocked ? "Mở khóa tài khoản" : "Khóa tài khoản")</button></form>
             </details>
         }
     </article></div>

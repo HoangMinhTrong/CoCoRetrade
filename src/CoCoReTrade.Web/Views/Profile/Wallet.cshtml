@@ -1,4 +1,5 @@
 @model WalletBalanceDto
+@inject Microsoft.AspNetCore.Authorization.IAuthorizationService AuthorizationService
 @{
     ViewData["Title"] = "Ví ký gửi CoCo";
     var requests = (IReadOnlyList<WithdrawalDto>)ViewBag.Withdrawals;
@@ -7,11 +8,17 @@
 <h1 class="page-title mt-1">Ví ký gửi CoCo</h1>
 <p class="subtitle">Số dư khả dụng chỉ tăng khi khách đã nhận hàng, CoCo đã thu tiền và nhân viên hoàn tất đơn. Đặt đơn hoặc chỉ xác nhận thanh toán chưa ghi có ví. Hoa hồng tính trên tiền hàng, không gồm phí vận chuyển.</p>
 <div class="row g-3 mb-4">
-    <div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Khả dụng</div><strong class="fs-3">@Model.Available.ToString("N0") VNĐ</strong></div></div>
-    <div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Đơn cũ chờ đối soát</div><strong class="fs-3">@Model.PendingSellerProceeds.ToString("N0") VNĐ</strong></div></div>
-    <div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Đang chờ rút</div><strong class="fs-3">@Model.PendingWithdrawal.ToString("N0") VNĐ</strong></div></div>
-    <div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Đã xác nhận chuyển khoản</div><strong class="fs-3">@Model.Withdrawn.ToString("N0") VNĐ</strong></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Khả dụng</div><strong class="wallet-stat-value">@Model.Available.ToString("N0")</strong><span class="wallet-stat-unit">VNĐ</span></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Đơn cũ chờ đối soát</div><strong class="wallet-stat-value">@Model.PendingSellerProceeds.ToString("N0")</strong><span class="wallet-stat-unit">VNĐ</span></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Đang chờ rút</div><strong class="wallet-stat-value">@Model.PendingWithdrawal.ToString("N0")</strong><span class="wallet-stat-unit">VNĐ</span></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Đã xác nhận chuyển khoản</div><strong class="wallet-stat-value">@Model.Withdrawn.ToString("N0")</strong><span class="wallet-stat-unit">VNĐ</span></div></div>
 </div>
+@if ((await AuthorizationService.AuthorizeAsync(User, null, StaffPermissions.ManageWallets)).Succeeded)
+{
+    <div class="panel mb-4"><strong>Hoa hồng của sàn được theo dõi trong Ví CoCo chung.</strong> Ví này là ví ký gửi cá nhân của tài khoản bạn.
+        <a asp-area="Admin" asp-controller="Wallets" asp-action="Platform" class="btn btn-outline-wine btn-sm ms-sm-2 mt-2 mt-sm-0">Xem Ví CoCo</a>
+    </div>
+}
 <div class="row g-4 mb-5">
     <div class="col-lg-6">
         <form asp-action="Withdraw" method="post" class="panel">

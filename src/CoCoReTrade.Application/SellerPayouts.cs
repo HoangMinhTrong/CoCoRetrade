@@ -8,7 +8,8 @@ public interface ISellerPayoutService
     Task<Guid> CreditCompletedOrderAsync(Order order, string actorId, DateTime nowUtc, CancellationToken ct);
 }
 
-public sealed class SellerPayoutService(IAdminWalletRepository repository) : ISellerPayoutService
+public sealed class SellerPayoutService(IAdminWalletRepository repository,
+    IPlatformCommissionRepository? platformCommissions = null) : ISellerPayoutService
 {
     public async Task<Guid> CreditCompletedOrderAsync(Order order, string actorId, DateTime nowUtc, CancellationToken ct)
     {
@@ -16,6 +17,8 @@ public sealed class SellerPayoutService(IAdminWalletRepository repository) : ISe
             throw new InvalidOperationException("Chỉ đơn đã hoàn tất và thanh toán mới được ghi có ví người bán.");
         if (await repository.HasSellerPayoutAsync(order.Id, ct))
             throw new InvalidOperationException("Tiền bán hàng của đơn này đã được ghi có.");
+        var commissionAlreadyRecorded = platformCommissions is not null &&
+            await platformCommissions.HasEntryAsync(order.Id, ct);
 
         var proceeds = order.ItemAmount - order.CommissionAmount;
         if (proceeds <= 0) throw new InvalidOperationException("Đơn hàng không có số tiền hợp lệ để ghi có ví người bán.");
@@ -31,6 +34,9 @@ public sealed class SellerPayoutService(IAdminWalletRepository repository) : ISe
             Id = Guid.NewGuid(), WalletId = wallet.Id, OrderId = order.Id,
             Amount = proceeds, Type = "SellerPayout", CreatedAtUtc = nowUtc
         });
+        // Both receipts are saved by the caller in the same SQL transaction.
+        if (!commissionAlreadyRecorded)
+            platformCommissions?.Add(new PlatformCommissionEntry(order, nowUtc));
         repository.AddAudit(new AuditLog
         {
             Id = Guid.NewGuid(), ActorId = actorId, EntityType = "Wallet",

@@ -25,8 +25,9 @@
             <section class="panel mb-4" aria-labelledby="price-title">
                 <div class="form-section-heading"><span class="step-number">3</span><div><h2 id="price-title" class="h5 mb-1">Mức giá bạn mong muốn</h2><p class="small subtitle mb-0">Nhập số tiền theo Việt Nam đồng.</p></div></div>
                 <div class="row g-3 mt-1">
-                    <div class="col-md-6"><label asp-for="OriginalPrice" class="form-label"></label><div class="input-group"><input asp-for="OriginalPrice" class="form-control" type="number" min="1" step="1" /><span class="input-group-text">VNĐ</span></div><span asp-validation-for="OriginalPrice" class="text-danger small"></span></div>
-                    <div class="col-md-6"><label asp-for="AskingPrice" class="form-label"></label><div class="input-group"><input asp-for="AskingPrice" class="form-control" type="number" min="1" step="1" /><span class="input-group-text">VNĐ</span></div><span asp-validation-for="AskingPrice" class="text-danger small"></span></div>
+                    <div class="col-md-6"><label asp-for="OriginalPrice" class="form-label"></label><div class="input-group"><input asp-for="OriginalPrice" class="form-control" type="number" min="1000" step="1" placeholder="Ví dụ: 50000" /><span class="input-group-text">VNĐ</span></div><span asp-validation-for="OriginalPrice" class="text-danger small"></span></div>
+                    <div class="col-md-6"><label asp-for="AskingPrice" class="form-label"></label><div class="input-group"><input asp-for="AskingPrice" class="form-control" type="number" min="1000" step="1" placeholder="Ví dụ: 29000" /><span class="input-group-text">VNĐ</span></div><span asp-validation-for="AskingPrice" class="text-danger small"></span></div>
+                    <div class="col-12"><p class="form-text mb-0">Nhập đủ số tiền bằng VNĐ: nhập <strong>29000</strong> để hiển thị <strong>29,000 VNĐ</strong>. Giá tối thiểu 1,000 VNĐ.</p></div>
                     <div class="col-12"><div class="form-check form-switch mt-2"><input asp-for="AllowOffers" class="form-check-input" /><label asp-for="AllowOffers" class="form-check-label">Cho phép người mua đề xuất giá</label></div><p class="small subtitle mt-1 mb-0">Bạn có thể chấp nhận, từ chối hoặc đề xuất lại sau khi sản phẩm được duyệt.</p></div>
                 </div>
             </section>

@@ -2,11 +2,13 @@
 @inject IAuthorizationService Authorization
 @{
     var current = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
     var links = new[] {
         ("Dashboard", "Index", "Tổng quan", "grid", StaffPermissions.ReadPending, "Công việc"),
         ("Inspection", "Index", "Kiểm định & duyệt", "clipboard", StaffPermissions.ReadPending, ""),
         ("Products", "Index", "Sản phẩm", "hanger", StaffPermissions.ManageProducts, ""),
         ("Orders", "Index", "Đơn hàng", "package", StaffPermissions.ManageOrders, ""),
+        ("Orders", "HeldPickups", "Tạm giữ chờ lấy", "clock", StaffPermissions.ManageOrders, ""),
         ("Wallets", "Index", "Ví & yêu cầu rút tiền", "wallet", StaffPermissions.ManageWallets, "Tài chính"),
         ("Reports", "Revenue", "Báo cáo doanh thu", "chart", StaffPermissions.ManageWallets, ""),
         ("Users", "Index", "Người dùng", "users", StaffPermissions.ManageUsers, "Quản lý"),
@@ -21,7 +23,8 @@
         @if ((await Authorization.AuthorizeAsync(User, permission)).Succeeded)
         {
             @if (!string.IsNullOrEmpty(group)) { <span class="sidebar-group">@group</span> }
-            <a class="@(current == controller ? "is-active" : "")" asp-area="Admin" asp-controller="@controller" asp-action="@action" aria-current="@(current == controller ? "page" : null)"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#@icon"></use></svg><span>@title</span></a>
+            var selected = current == controller && (controller != "Orders" || currentAction == action);
+            <a class="@(selected ? "is-active" : "")" asp-area="Admin" asp-controller="@controller" asp-action="@action" aria-current="@(selected ? "page" : null)"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#@icon"></use></svg><span>@title</span></a>
         }
     }
     <div class="sidebar-footer"><a asp-area="" asp-controller="Home" asp-action="Index"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#home"></use></svg> Về trang mua sắm</a><p>Mỗi món đồ, một hành trình mới.</p></div>

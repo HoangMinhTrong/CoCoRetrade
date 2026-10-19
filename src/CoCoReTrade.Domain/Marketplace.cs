@@ -159,6 +159,8 @@ public sealed class Product
             name.Trim().Length is < 3 or > 200 || brand.Trim().Length is < 2 or > 100 ||
             category.Trim().Length is < 2 or > 80 || size.Trim().Length is < 1 or > 30)
             throw new ArgumentException("Cần nhập tên, thương hiệu, danh mục và kích cỡ sản phẩm.");
+        if (original < 1_000 || asking < 1_000)
+            throw new ArgumentException("Giá sản phẩm phải từ 1,000 VNĐ. Ví dụ: nhập 29000 để bán với giá 29,000 VNĐ.");
         if (asking <= 0 || original < asking || asking > 999_999_999_999_999_999m ||
             original > 999_999_999_999_999_999m || asking != decimal.Truncate(asking) ||
             original != decimal.Truncate(original) || condition is < 50 or > 100)

@@ -33,6 +33,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<SellerFollow> SellerFollows => Set<SellerFollow>();
     public DbSet<Wallet> Wallets => Set<Wallet>();
     public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
+    public DbSet<PlatformCommissionEntry> PlatformCommissionEntries => Set<PlatformCommissionEntry>();
     public DbSet<WithdrawalRequest> WithdrawalRequests => Set<WithdrawalRequest>();
     public DbSet<MarketplaceNotification> MarketplaceNotifications => Set<MarketplaceNotification>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
@@ -221,6 +222,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             e.HasOne<Wallet>().WithMany().HasForeignKey(x => x.WalletId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Order>().WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<WithdrawalRequest>().WithMany().HasForeignKey(x => x.WithdrawalRequestId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<PlatformCommissionEntry>(e =>
+        {
+            e.ToTable("PlatformCommissionEntries");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Amount).HasColumnType("decimal(18,0)");
+            e.HasIndex(x => x.OrderId).IsUnique();
+            e.HasIndex(x => x.CreatedAtUtc);
+            e.HasOne<Order>().WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
         });
         b.Entity<WithdrawalRequest>(e =>
         {

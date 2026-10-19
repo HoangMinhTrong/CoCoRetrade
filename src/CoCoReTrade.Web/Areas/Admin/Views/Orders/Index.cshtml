@@ -1,6 +1,7 @@
 @model IReadOnlyList<OrderDto>
 @{ ViewData["Title"] = "Quản lý đơn hàng"; }
-<header class="admin-page-header"><div><div class="eyebrow">Vận hành cửa hàng</div><h1 class="page-title">Đơn hàng</h1><p class="subtitle mb-0">Mở một đơn để xử lý giao nhận và cập nhật tiến độ.</p></div><span class="admin-status">@Model.Count đơn trong danh sách</span></header>
+<header class="admin-page-header"><div><div class="eyebrow">Vận hành cửa hàng</div><h1 class="page-title">Đơn hàng</h1><p class="subtitle mb-0">Mở một đơn để xử lý giao nhận và cập nhật tiến độ.</p></div><a class="btn btn-outline-wine" asp-action="HeldPickups">Xem hàng tạm giữ chờ lấy →</a></header>
+<p class="small text-muted">@Model.Count đơn trong danh sách</p>
 @if (Model.Count == 0)
 {
     <div class="empty-state"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#package" /></svg><h2 class="fs-4 mt-3">Chưa có đơn hàng</h2><p class="mb-0">Đơn mới sẽ xuất hiện tại đây khi khách hoàn tất đặt hàng.</p></div>

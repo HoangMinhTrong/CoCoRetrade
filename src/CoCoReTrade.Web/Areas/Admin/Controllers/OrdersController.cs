@@ -11,6 +11,8 @@ public sealed class OrdersController(IAdminOrderService orders) : Controller
 {
     private string AdminId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
     [HttpGet] public async Task<IActionResult> Index(CancellationToken ct) => View(await orders.QueueAsync(AdminId, ct));
+    [HttpGet] public async Task<IActionResult> HeldPickups(CancellationToken ct) =>
+        View(await orders.HeldPickupsAsync(AdminId, ct));
     [HttpGet]
     public async Task<IActionResult> Details(Guid id, CancellationToken ct)
     {

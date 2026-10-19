@@ -4,7 +4,7 @@
     var selectedDate = Context.Request.Query["date"].FirstOrDefault() ?? DateTime.UtcNow.AddHours(7).ToString("yyyy-MM-dd");
     var selectedPeriod = Context.Request.Query["period"].FirstOrDefault() ?? "month";
 }
-<header class="admin-page-header"><div><div class="eyebrow">Tài chính CoCo</div><h1 class="page-title">Báo cáo doanh thu</h1><p class="subtitle mb-0">Hoa hồng và thu nhập từ các đơn đã hoàn tất, đã xác nhận thanh toán.</p></div><span class="admin-status">Giờ Việt Nam</span></header>
+<header class="admin-page-header"><div><div class="eyebrow">Tài chính CoCo</div><h1 class="page-title">Báo cáo doanh thu</h1><p class="subtitle mb-0">Hoa hồng và thu nhập từ các đơn đã hoàn tất, đã xác nhận thanh toán.</p></div><div class="d-flex flex-wrap align-items-center gap-2"><a class="btn btn-outline-wine btn-sm" asp-area="Admin" asp-controller="Wallets" asp-action="Platform">Xem Ví CoCo</a><span class="admin-status">Giờ Việt Nam</span></div></header>
 <form method="get" asp-area="Admin" asp-controller="Reports" asp-action="Revenue" class="panel admin-toolbar mb-4">
     <div><label class="form-label" for="period">Xem theo</label><select class="form-select" id="period" name="period"><option value="day" selected="@(selectedPeriod == "day")">Ngày</option><option value="week" selected="@(selectedPeriod == "week")">Tuần</option><option value="month" selected="@(selectedPeriod == "month")">Tháng</option></select></div>
     <div><label class="form-label" for="date">Chọn ngày làm mốc</label><input class="form-control" type="date" id="date" name="date" value="@selectedDate" /></div>

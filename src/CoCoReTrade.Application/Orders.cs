@@ -181,12 +181,23 @@ public sealed class OrderService(IOrderRepository repository, MarketplacePolicy 
                 if (products is null) product.Reserve(); else products.ReserveForOrder(product, order);
                 await repository.AddAsync(order, ct);
                 Audit(buyerId, order, "OrderPlaced", now);
-                Notify(order.SellerId, order, $"{order.ProductSku} đã có đơn mới ({FulfillmentName(order.Fulfillment)}).", now);
-                Notify(order.BuyerId, order, $"Đơn {order.ProductSku} đã được ghi nhận, đang chờ xử lý.", now);
+                var pickupLabel = order.PickupAtUtc is { } pickupUtc
+                    ? new DateTimeOffset(pickupUtc, TimeSpan.Zero)
+                        .ToOffset(TimeSpan.FromHours(shipping.StoreUtcOffsetHours))
+                        .ToString("dd/MM/yyyy HH:mm")
+                    : null;
+                Notify(order.SellerId, order, pickupLabel is null
+                    ? $"{order.ProductSku} đã có đơn mới ({FulfillmentName(order.Fulfillment)})."
+                    : $"{order.ProductSku} đang được CoCo tạm giữ cho khách lấy lúc {pickupLabel} (giờ Việt Nam).", now);
+                Notify(order.BuyerId, order, pickupLabel is null
+                    ? $"Đơn {order.ProductSku} đã được ghi nhận, đang chờ xử lý."
+                    : $"CoCo đang tạm giữ {order.ProductSku} cho lịch lấy lúc {pickupLabel} (giờ Việt Nam).", now);
                 foreach (var adminId in await repository.AdminUserIdsAsync(ct))
                 {
                     if (adminId == order.SellerId || adminId == order.BuyerId) continue;
-                    Notify(adminId, order, $"Đơn mới {order.ProductSku}: {FulfillmentName(order.Fulfillment)}, phí giao {order.ShippingFee:N0} VNĐ.", now);
+                    Notify(adminId, order, pickupLabel is null
+                        ? $"Đơn mới {order.ProductSku}: {FulfillmentName(order.Fulfillment)}, phí giao {order.ShippingFee:N0} VNĐ."
+                        : $"Tạm giữ {order.ProductSku} cho khách lấy tại CoCo lúc {pickupLabel} (giờ Việt Nam).", now);
                 }
                 await repository.SaveAsync(ct);
                 return ToDto(order);

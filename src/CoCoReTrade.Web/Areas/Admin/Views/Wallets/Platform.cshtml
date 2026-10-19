@@ -1,0 +1,32 @@
+@model PlatformCommissionWallet
+@{
+    ViewData["Title"] = "Ví hoa hồng CoCo";
+}
+<header class="admin-page-header">
+    <div><div class="eyebrow">Tài chính CoCo</div><h1 class="page-title">Ví hoa hồng CoCo</h1>
+        <p class="subtitle mb-0">Sổ ghi nhận hoa hồng của sàn từ những đơn đã thanh toán và giao thành công. Đây là ví chung của CoCo, không phải ví ký gửi cá nhân của admin.</p></div>
+    <a class="btn btn-outline-wine" asp-action="Index">Về quản lý ví</a>
+</header>
+<div class="row g-3 mb-4">
+    <div class="col-sm-6"><div class="panel h-100"><div class="eyebrow">Tổng hoa hồng đã ghi nhận</div><strong class="wallet-stat-value">@Model.Balance.ToString("N0")</strong><span class="wallet-stat-unit">VNĐ</span></div></div>
+    <div class="col-sm-6"><div class="panel h-100"><div class="eyebrow">Đơn đã ghi nhận</div><strong class="wallet-stat-value">@Model.OrderCount.ToString("N0")</strong><span class="wallet-stat-unit">đơn hàng</span></div></div>
+</div>
+<section class="panel mb-5">
+    <h2 class="fs-4 mb-3">Hoa hồng theo đơn gần đây</h2>
+    @if (Model.RecentEntries.Count == 0)
+    {
+        <p class="text-muted mb-0">Chưa có đơn đủ điều kiện ghi nhận hoa hồng.</p>
+    }
+    else
+    {
+        <div class="table-responsive"><table class="table admin-table align-middle mb-0">
+            <thead><tr><th scope="col">Sản phẩm</th><th scope="col">Ngày ghi nhận</th><th scope="col" class="text-end">Tiền hàng</th><th scope="col" class="text-end">Hoa hồng CoCo</th><th scope="col"></th></tr></thead>
+            <tbody>
+            @foreach (var entry in Model.RecentEntries)
+            {
+                <tr><td class="admin-code">@entry.ProductSku</td><td>@entry.CreatedAtUtc.AddHours(7).ToString("dd/MM/yyyy HH:mm")</td><td class="text-end text-nowrap">@entry.MerchandiseAmount.ToString("N0") VNĐ</td><td class="text-end text-nowrap fw-semibold">@entry.CommissionAmount.ToString("N0") VNĐ</td><td class="text-end"><a asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@entry.OrderId" class="btn btn-outline-wine btn-sm text-nowrap">Xem đơn</a></td></tr>
+            }
+            </tbody>
+        </table></div>
+    }
+</section>

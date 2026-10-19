@@ -319,6 +319,8 @@ a, button, input, select, textarea, summary { -webkit-tap-highlight-color: trans
 .wallet-overview { background: #f9eef2; border-color: #ebd9e0; }
 .wallet-amount { font-size: 2rem; font-weight: 750; letter-spacing: -.035em; color: var(--wine); overflow-wrap: anywhere; }
 .wallet-amount span { font-size: .9rem; font-weight: 600; letter-spacing: 0; }
+.wallet-stat-value { display: block; margin-top: .65rem; font-size: clamp(1.45rem, 3vw, 2rem); font-weight: 750; line-height: 1.1; letter-spacing: -.035em; color: var(--wine); overflow-wrap: anywhere; }
+.wallet-stat-unit { display: block; margin-top: .2rem; font-size: .8rem; font-weight: 650; color: var(--muted); }
 .notification-tabs .is-active { background: var(--wine); border-color: var(--wine); color: white; }
 .notification-item.is-unread { border-color: #e5c4d0; background: #fffafc; }
 .notification-symbol, .conversation-avatar { display: grid; place-items: center; width: 43px; height: 43px; border-radius: 14px; background: #f5edf1; color: #9d6780; font-weight: 650; }

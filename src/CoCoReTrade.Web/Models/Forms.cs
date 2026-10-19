@@ -46,8 +46,8 @@ public sealed class ListingForm
     [Required(ErrorMessage = "Vui lòng nhập trường này."), MinLength(2, ErrorMessage = "Cần ít nhất {1} ký tự."), Display(Name = "Thương hiệu")] public string Brand { get; set; } = "";
     [Required(ErrorMessage = "Vui lòng nhập trường này."), Display(Name = "Danh mục")] public string Category { get; set; } = "";
     [Required(ErrorMessage = "Vui lòng nhập trường này."), Display(Name = "Kích cỡ")] public string Size { get; set; } = "";
-    [Range(1, 999999999999, ErrorMessage = "Số tiền phải từ 1 đến 999,999,999,999 VNĐ."), Display(Name = "Giá gốc")] public decimal OriginalPrice { get; set; }
-    [Range(1, 999999999999, ErrorMessage = "Số tiền phải từ 1 đến 999,999,999,999 VNĐ."), Display(Name = "Giá mong muốn")] public decimal AskingPrice { get; set; }
+    [Range(1000, 999999999999, ErrorMessage = "Số tiền phải từ 1,000 đến 999,999,999,999 VNĐ. Ví dụ: nhập 29000 cho 29,000 VNĐ."), Display(Name = "Giá gốc")] public decimal OriginalPrice { get; set; }
+    [Range(1000, 999999999999, ErrorMessage = "Số tiền phải từ 1,000 đến 999,999,999,999 VNĐ. Ví dụ: nhập 29000 cho 29,000 VNĐ."), Display(Name = "Giá mong muốn")] public decimal AskingPrice { get; set; }
     [Range(50, 100, ErrorMessage = "Giá trị phải từ {1} đến {2}."), Display(Name = "Độ mới (%)")] public int ConditionPercent { get; set; } = 95;
     public bool AllowOffers { get; set; } = true;
     [Display(Name = "Ảnh sản phẩm")] public List<IFormFile> Images { get; set; } = [];
@@ -63,10 +63,11 @@ public sealed class InspectionForm
     [Required(ErrorMessage = "Vui lòng nhập trường này."), MinLength(2, ErrorMessage = "Cần ít nhất {1} ký tự."), Display(Name = "Thương hiệu")] public string Brand { get; set; } = "";
     [Required(ErrorMessage = "Vui lòng nhập trường này."), Display(Name = "Danh mục")] public string Category { get; set; } = "";
     [Required(ErrorMessage = "Vui lòng nhập trường này."), Display(Name = "Kích cỡ")] public string Size { get; set; } = "";
-    [Range(1, 999999999999, ErrorMessage = "Số tiền phải từ 1 đến 999,999,999,999 VNĐ."), Display(Name = "Giá gốc")] public decimal OriginalPrice { get; set; }
-    [Range(1, 999999999999, ErrorMessage = "Số tiền phải từ 1 đến 999,999,999,999 VNĐ."), Display(Name = "Giá niêm yết")] public decimal AskingPrice { get; set; }
+    [Range(1000, 999999999999, ErrorMessage = "Số tiền phải từ 1,000 đến 999,999,999,999 VNĐ. Ví dụ: nhập 29000 cho 29,000 VNĐ."), Display(Name = "Giá gốc")] public decimal OriginalPrice { get; set; }
+    [Range(1000, 999999999999, ErrorMessage = "Số tiền phải từ 1,000 đến 999,999,999,999 VNĐ. Ví dụ: nhập 29000 cho 29,000 VNĐ."), Display(Name = "Giá niêm yết")] public decimal AskingPrice { get; set; }
     [Range(50, 100, ErrorMessage = "Giá trị phải từ {1} đến {2}."), Display(Name = "Độ mới thực tế (%)")] public int VerifiedCondition { get; set; }
-    [Display(Name = "Ghi chú kiểm định")] public string Notes { get; set; } = "";
+    [StringLength(2000, ErrorMessage = "Ghi chú kiểm định không được vượt quá 2,000 ký tự."), Display(Name = "Ghi chú kiểm định")]
+    public string? Notes { get; set; }
     [Display(Name = "Lý do từ chối")] public string RejectionReason { get; set; } = "";
     [Display(Name = "Ảnh kiểm định bổ sung")] public List<IFormFile> InspectionImages { get; set; } = [];
     public InspectionSubmission ToRequest() => new(Passed, Name, Brand, Category, Size, OriginalPrice,

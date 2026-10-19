@@ -74,13 +74,13 @@
                     <legend class="fs-6 fw-semibold">Độ mới & giá bán</legend>
                     <div class="row g-3">
                         <div class="col-sm-4"><label asp-for="VerifiedCondition" class="form-label"></label><div class="input-group"><input asp-for="VerifiedCondition" type="number" min="50" max="100" class="form-control" /><span class="input-group-text">%</span></div><span asp-validation-for="VerifiedCondition" class="small text-danger"></span></div>
-                        <div class="col-sm-4"><label asp-for="OriginalPrice" class="form-label"></label><input asp-for="OriginalPrice" type="number" min="1" step="1" class="form-control" /><small class="form-text">Đơn vị: VNĐ</small><span asp-validation-for="OriginalPrice" class="small text-danger"></span></div>
-                        <div class="col-sm-4"><label asp-for="AskingPrice" class="form-label"></label><input asp-for="AskingPrice" type="number" min="1" step="1" class="form-control" /><small class="form-text">Đơn vị: VNĐ</small><span asp-validation-for="AskingPrice" class="small text-danger"></span></div>
+                        <div class="col-sm-4"><label asp-for="OriginalPrice" class="form-label"></label><input asp-for="OriginalPrice" type="number" min="1000" step="1" class="form-control" /><small class="form-text">Nhập đủ VNĐ, ví dụ 50000 = 50,000 VNĐ.</small><span asp-validation-for="OriginalPrice" class="small text-danger"></span></div>
+                        <div class="col-sm-4"><label asp-for="AskingPrice" class="form-label"></label><input asp-for="AskingPrice" type="number" min="1000" step="1" class="form-control" /><small class="form-text">Nhập đủ VNĐ, ví dụ 29000 = 29,000 VNĐ.</small><span asp-validation-for="AskingPrice" class="small text-danger"></span></div>
                     </div>
                 </fieldset>
                 <fieldset class="admin-form-section">
                     <legend class="fs-6 fw-semibold">Bổ sung thông tin <span class="small text-muted fw-normal">· Không bắt buộc</span></legend>
-                    <div class="mb-3"><label asp-for="Notes" class="form-label">Ghi chú kiểm định</label><textarea asp-for="Notes" rows="3" maxlength="2000" class="form-control" placeholder="Đặc điểm, vết sờn hoặc thông tin cần lưu ý..."></textarea><span asp-validation-for="Notes" class="small text-danger"></span></div>
+                    <div class="mb-3"><label asp-for="Notes" class="form-label">Ghi chú kiểm định <span class="fw-normal text-muted">(không bắt buộc)</span></label><textarea asp-for="Notes" rows="3" maxlength="2000" class="form-control" placeholder="Đặc điểm, vết sờn hoặc thông tin cần lưu ý..."></textarea><span asp-validation-for="Notes" class="small text-danger"></span></div>
                     <div><label asp-for="InspectionImages" class="form-label">Ảnh kiểm định bổ sung</label><input asp-for="InspectionImages" type="file" accept="image/jpeg,image/png,image/webp" multiple class="form-control" /><small class="form-text">Tối đa 10 ảnh JPEG, PNG hoặc WebP; mỗi ảnh tối đa 5 MB.</small><span asp-validation-for="InspectionImages" class="small text-danger"></span></div>
                 </fieldset>
                 <div class="form-check mb-4"><input asp-for="Passed" class="form-check-input" /><label asp-for="Passed" class="form-check-label fw-semibold">Hiện vật đạt kiểm định</label></div>
