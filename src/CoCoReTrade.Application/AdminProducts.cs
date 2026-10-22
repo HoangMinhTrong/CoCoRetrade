@@ -33,7 +33,8 @@ public sealed record InspectionSummary(Guid Id, string InspectorId, bool Passed,
 public sealed record AdminProductDetails(ProductDetails Product, string SellerName, string RowVersion,
     IReadOnlyList<InspectionSummary> Inspections, bool CanPublish);
 public sealed record AdminProductItem(Guid Id, string ConsignmentCode, string Sku, string Name, string Brand,
-    string SellerName, ProductStatus Status, int? VerifiedCondition, DateTime CreatedAtUtc);
+    string SellerName, ProductStatus Status, int? VerifiedCondition, DateTime CreatedAtUtc,
+    PreliminaryReviewStatus PreliminaryStatus = PreliminaryReviewStatus.Pending);
 public sealed record AdminProductDashboard(int Pending, int Inspected, int Active, int Rejected, int Reserved, int Sold);
 public sealed record AuditEntry(Guid Id, string ActorId, string Action, string EntityType, string EntityId,
     string Details, DateTime CreatedAtUtc);
@@ -69,6 +70,8 @@ public interface IAdminProductService
     Task<IReadOnlyList<AdminProductItem>> ManageAsync(string actorId, ProductStatus? status, string? search, CancellationToken ct);
     Task<AdminProductDetails?> GetAsync(string actorId, Guid id, CancellationToken ct);
     Task<AdminProductDetails> InspectAsync(string actorId, Guid id, InspectionSubmission request, CancellationToken ct);
+    Task<AdminProductDetails> ReviewPreliminarilyAsync(string actorId, Guid id, PreliminaryReviewStatus decision,
+        string? reason, string expectedRowVersion, CancellationToken ct);
     Task<AdminProductDetails> SelectCoverAsync(string actorId, Guid id, Guid imageId,
         string expectedRowVersion, CancellationToken ct);
     Task<AdminProductDetails> PublishAsync(string actorId, Guid id, string expectedRowVersion,
@@ -140,6 +143,25 @@ public sealed class AdminProductService(IAdminProductRepository repository, ISta
             throw;
         }
     }
+    public async Task<AdminProductDetails> ReviewPreliminarilyAsync(string actorId, Guid id,
+        PreliminaryReviewStatus decision, string? reason, string expectedRowVersion, CancellationToken ct)
+    {
+        await permissions.EnsureAsync(actorId, StaffPermissions.Reject, ct);
+        await using var transaction = await repository.BeginTransactionAsync(ct);
+        var product = await repository.FindAsync(id, ct) ?? throw new KeyNotFoundException("Không tìm thấy sản phẩm.");
+        EnsureVersion(product, expectedRowVersion);
+        product.ReviewPreliminarily(actorId, decision, reason, clock.GetUtcNow().UtcDateTime);
+        repository.AddAudit(NewAudit(actorId, "Products.PreliminaryReview", product,
+            $"{decision}; reason={product.PreliminaryReason ?? string.Empty}"));
+        repository.AddNotification(NewNotification(product.SellerId,
+            decision == PreliminaryReviewStatus.Approved
+                ? $"Sản phẩm {product.Name} ({product.ConsignmentCode}) đã duyệt sơ bộ. Vui lòng mang món đồ đến CoCo để kiểm định trực tiếp."
+                : $"Sản phẩm {product.Name} ({product.ConsignmentCode}) cần cập nhật: {product.PreliminaryReason}", product.Id));
+        await repository.SaveAsync(ct);
+        var result = await ToDetailsAsync(product, ct);
+        await transaction.CommitAsync(ct);
+        return result;
+    }
     public async Task<AdminProductDetails> SelectCoverAsync(string actorId, Guid id, Guid imageId,
         string expectedRowVersion, CancellationToken ct)
     {
@@ -166,7 +188,7 @@ public sealed class AdminProductService(IAdminProductRepository repository, ISta
         var sku = await codes.NewProductSkuAsync(ct);
         await lifecycle.PublishAsync(actorId, product, sku, clock.GetUtcNow().UtcDateTime, ct);
         repository.AddAudit(NewAudit(actorId, "Products.Published", product, product.Sku));
-        repository.AddNotification(NewNotification(product.SellerId, $"Sản phẩm {product.ConsignmentCode} đã được duyệt lên sàn với mã SKU {product.Sku}.", product.Id));
+        repository.AddNotification(NewNotification(product.SellerId, $"Sản phẩm {product.Name} đã được duyệt lên sàn.", product.Id));
         await repository.SaveAsync(ct);
         var result = await ToDetailsAsync(product, ct);
         await transaction.CommitAsync(ct);
@@ -180,7 +202,7 @@ public sealed class AdminProductService(IAdminProductRepository repository, ISta
         EnsureVersion(product, expectedRowVersion);
         await lifecycle.RejectAsync(actorId, product, reason, ct);
         repository.AddAudit(NewAudit(actorId, "Products.Rejected", product, product.RejectionReason!));
-        repository.AddNotification(NewNotification(product.SellerId, $"Sản phẩm {product.ConsignmentCode} bị từ chối: {product.RejectionReason}", product.Id));
+        repository.AddNotification(NewNotification(product.SellerId, $"Sản phẩm {product.Name} ({product.ConsignmentCode}) bị từ chối: {product.RejectionReason}", product.Id));
         await repository.SaveAsync(ct);
         var result = await ToDetailsAsync(product, ct);
         await transaction.CommitAsync(ct);
@@ -212,7 +234,8 @@ public sealed class AdminProductService(IAdminProductRepository repository, ISta
     private async Task<AdminProductDetails> ToDetailsAsync(Product p, CancellationToken ct) => new(
         new ProductDetails(p.Id, p.Sku, p.Name, p.Brand, p.Category, p.Size, p.OriginalPrice, p.AskingPrice,
             p.DeclaredCondition, p.VerifiedCondition, p.AllowOffers, p.Status, p.SellerId, p.RejectionReason,
-            p.Images.OrderBy(x => x.SortOrder).Select(x => x.Id).ToList(), p.CreatedAtUtc, p.ConsignmentCode),
+            p.Images.OrderBy(x => x.SortOrder).Select(x => x.Id).ToList(), p.CreatedAtUtc, p.ConsignmentCode,
+            "", p.PreliminaryStatus, p.PreliminaryReason, Convert.ToBase64String(p.RowVersion)),
         await repository.SellerNameAsync(p.SellerId, ct), Convert.ToBase64String(p.RowVersion),
         p.Inspections.OrderByDescending(x => x.CreatedAtUtc).Select(x => new InspectionSummary(x.Id, x.InspectorId,
             x.Approved, x.Name, x.Brand, x.Category, x.Size, x.OriginalPrice, x.AskingPrice, x.VerifiedCondition,

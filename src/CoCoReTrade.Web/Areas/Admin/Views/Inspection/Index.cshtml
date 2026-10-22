@@ -19,11 +19,11 @@ else
     @foreach (var p in Model)
     {
         <div class="col-12 col-md-6 col-xl-4"><article class="panel admin-record-card h-100 d-flex flex-column">
-            <div class="d-flex align-items-center justify-content-between gap-2 mb-3"><span class="admin-code">@p.ConsignmentCode</span><span class="admin-status admin-status--warning">Chờ duyệt</span></div>
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-3"><span class="admin-code">@p.ConsignmentCode</span><span class="admin-status admin-status--warning">@(p.PreliminaryStatus == PreliminaryReviewStatus.Approved ? "Chờ kiểm định trực tiếp" : p.PreliminaryStatus == PreliminaryReviewStatus.ChangesRequested ? "Cần cập nhật" : "Chờ duyệt sơ bộ")</span></div>
             <h2 class="fs-5">@p.Name</h2><div class="text-muted small mb-3">@p.Brand</div>
             <div class="spec-row"><span>Người ký gửi</span><strong>@p.SellerName</strong></div>
             <div class="spec-row mb-3"><span>Ngày gửi</span><strong>@p.CreatedAtUtc.AddHours(7).ToString("dd/MM/yyyy")</strong></div>
-            <a class="btn btn-outline-wine w-100 mt-auto" asp-action="Review" asp-route-id="@p.Id">Mở phiếu kiểm định <span aria-hidden="true">→</span></a>
+            <a class="btn btn-outline-wine w-100 mt-auto" asp-action="Review" asp-route-id="@p.Id">@(p.PreliminaryStatus == PreliminaryReviewStatus.Approved ? "Mở phiếu kiểm định" : "Mở phiếu duyệt sơ bộ") <span aria-hidden="true">→</span></a>
         </article></div>
     }
     </div>

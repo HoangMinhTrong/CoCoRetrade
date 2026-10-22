@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CoCoReTrade.Web.Controllers;
 
 public sealed class AccountController(IAccountService accounts, IAccountMessageSender messages,
-    IAccountOtpService otps, IWebHostEnvironment environment) : Controller
+    IAccountOtpService otps) : Controller
 {
     [HttpGet] public IActionResult Register() => View(new RegisterForm());
     [HttpPost]
@@ -29,7 +29,6 @@ public sealed class AccountController(IAccountService accounts, IAccountMessageS
         }
         ViewBag.UserId = result.UserId;
         ViewBag.Flow = "activation";
-        ViewBag.DevCode = environment.IsDevelopment() ? issued.Code : null;
         return View("CheckEmail");
     }
     [HttpGet]
@@ -65,7 +64,6 @@ public sealed class AccountController(IAccountService accounts, IAccountMessageS
                 await messages.SendOtpAsync(issued.Email, issued.Code, "activation");
                 ViewBag.UserId = account.UserId;
                 ViewBag.Flow = "activation";
-                ViewBag.DevCode = environment.IsDevelopment() ? issued.Code : null;
             }
             catch (Exception ex) when (ex is InvalidOperationException or System.Net.Mail.SmtpException)
             {
@@ -114,7 +112,6 @@ public sealed class AccountController(IAccountService accounts, IAccountMessageS
             }
             ViewBag.UserId = result.UserId;
             ViewBag.Flow = "reset";
-            ViewBag.DevCode = environment.IsDevelopment() ? issued.Code : null;
         }
         else
         {
@@ -143,7 +140,6 @@ public sealed class AccountController(IAccountService accounts, IAccountMessageS
                 : await otps.IssueResetAsync(userId, ct);
             await messages.SendOtpAsync(issued.Email, issued.Code, purpose);
             TempData["Message"] = "Đã gửi mã xác thực mới.";
-            if (environment.IsDevelopment()) TempData["DevCode"] = issued.Code;
         }
         catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException or System.Net.Mail.SmtpException)
         {

@@ -57,7 +57,7 @@
                 @if (signedIn)
                 {
                     <a class="icon-link unread-link" asp-area="" asp-controller="Messages" asp-action="Index" aria-label="Tin nhắn" data-unread-label="Tin nhắn" title="Tin nhắn"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#message"></use></svg><span class="unread-count" data-unread-badge="messages" aria-hidden="true" hidden></span></a>
-                    <a class="icon-link @(inAdmin ? "d-none d-md-inline-flex" : "")" asp-area="" asp-controller="Cart" asp-action="Index" aria-label="Giỏ hàng" title="Giỏ hàng"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#bag"></use></svg></a>
+                    <a class="icon-link cart-link @(inAdmin ? "d-none d-md-inline-flex" : "")" asp-area="" asp-controller="Cart" asp-action="Index" aria-label="Giỏ hàng" title="Giỏ hàng"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#bag"></use></svg><span class="unread-count" data-cart-count aria-hidden="true" hidden></span></a>
                     <a class="icon-link unread-link d-none d-sm-inline-flex" asp-area="" asp-controller="Profile" asp-action="Notifications" aria-label="Thông báo" data-unread-label="Thông báo" title="Thông báo"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#bell"></use></svg><span class="unread-count" data-unread-badge="notifications" aria-hidden="true" hidden></span></a>
                     <a class="account-link" asp-area="" asp-controller="Profile" asp-action="Index" aria-label="Tài khoản của @name">
                         @if (headerProfile?.HasAvatar == true) { <img class="header-avatar" src="/avatars/@headerProfile.Id" alt="" width="32" height="32" /> }

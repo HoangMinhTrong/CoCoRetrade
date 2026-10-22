@@ -198,6 +198,7 @@ app.Use(async (context, next) =>
         !context.Request.Path.StartsWithSegments("/Account/ChangePassword", StringComparison.OrdinalIgnoreCase) &&
         !context.Request.Path.StartsWithSegments("/Account/Logout", StringComparison.OrdinalIgnoreCase) &&
         !context.Request.Path.StartsWithSegments("/api/v1/session", StringComparison.OrdinalIgnoreCase) &&
+        !context.Request.Path.StartsWithSegments("/api/v1/mobile/account", StringComparison.OrdinalIgnoreCase) &&
         !Path.HasExtension(context.Request.Path))
     {
         var users = context.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();

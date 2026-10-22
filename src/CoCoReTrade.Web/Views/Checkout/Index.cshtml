@@ -37,7 +37,6 @@
             <div class="row g-3"><div class="col-md-6"><label asp-for="Province" class="form-label"></label><input asp-for="Province" class="form-control" autocomplete="address-level1" placeholder="Tỉnh / thành phố hiện hành" /><span asp-validation-for="Province" class="text-danger small"></span></div>
             <div class="col-md-6"><label asp-for="Ward" class="form-label"></label><input asp-for="Ward" class="form-control" autocomplete="address-level3" placeholder="Phường / xã hiện hành" /><span asp-validation-for="Ward" class="text-danger small"></span></div>
             <div class="col-12"><label asp-for="StreetAddress" class="form-label"></label><input asp-for="StreetAddress" class="form-control" autocomplete="street-address" placeholder="Số nhà, đường, khu vực" /><span asp-validation-for="StreetAddress" class="text-danger small"></span></div>
-            <div class="col-sm-6"><label asp-for="PreferredDeliveryWindow" class="form-label"></label><select asp-for="PreferredDeliveryWindow" class="form-select"><option value="">Không yêu cầu</option><option value="Morning">Buổi sáng</option><option value="Afternoon">Buổi chiều</option><option value="BusinessHours">Giờ hành chính</option></select></div>
             <div class="col-12"><label asp-for="DeliveryNote" class="form-label"></label><textarea asp-for="DeliveryNote" rows="2" maxlength="500" class="form-control" placeholder="Hướng dẫn cho người giao hàng (nếu có)"></textarea></div></div>
             <p class="form-text mt-2">Giao nội thành: 20,000 VNĐ. Ngoại thành và liên tỉnh: 35,000 VNĐ. Phí được cập nhật theo địa chỉ bạn nhập.</p>
         </div>
@@ -76,7 +75,7 @@ async function updateQuote(){
   document.getElementById('checkoutSubmit').textContent = delivery ? 'Xác nhận đặt hàng' : 'Xác nhận hẹn lấy · tạm giữ món đồ';
   const feeEl = document.getElementById('shippingFee'), totalEl = document.getElementById('totalAmount');
   if(delivery && (!province.value.trim() || !ward.value.trim())){feeEl.textContent='Chọn tỉnh/thành và phường/xã';totalEl.textContent='—';return;}
-  if(preview){const fee=delivery?35000:0;feeEl.textContent=money(fee);totalEl.textContent=money(merchandise+fee);return;}
+  if(preview){const city=province.value.toLowerCase().replaceAll('đ','d').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z]/g,'');const fee=delivery?(city==='danang'||city==='tpdanang'||city==='thanhphodanang'?20000:35000):0;feeEl.textContent=money(fee);totalEl.textContent=money(merchandise+fee);return;}
   const query=new URLSearchParams({productId,fulfillment:type.value,province:province.value,ward:ward.value});
   if(offerId) query.set('offerId',offerId);
   try{const response=await fetch('/api/v1/orders/quote?'+query.toString(),{credentials:'same-origin'});

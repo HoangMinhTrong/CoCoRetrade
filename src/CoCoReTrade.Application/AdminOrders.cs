@@ -16,8 +16,9 @@ public interface IAdminOrderService
     Task<IReadOnlyList<OrderDto>> QueueAsync(string actorId, CancellationToken ct);
     Task<IReadOnlyList<HeldPickupOrderDto>> HeldPickupsAsync(string actorId, CancellationToken ct);
     Task<OrderDto?> DetailsAsync(Guid id, string actorId, CancellationToken ct);
-    Task<OrderDto> MarkReadyAsync(Guid id, string actorId, CancellationToken ct);
-    Task<OrderDto> ConfirmPaymentAsync(Guid id, string actorId, string reference, CancellationToken ct);
+    Task<OrderDto> ConfirmAsync(Guid id, string actorId, CancellationToken ct);
+    Task<OrderDto> MarkReadyAsync(Guid id, string actorId, CancellationToken ct, string? trackingCode = null);
+    Task<OrderDto> ConfirmPaymentAsync(Guid id, string actorId, string? reference, CancellationToken ct);
     Task<OrderDto> CompleteAsync(Guid id, string actorId, CancellationToken ct);
     Task<OrderDto> CancelAsync(Guid id, string actorId, CancellationToken ct);
     Task<OrderDto> ReturnUndeliveredAsync(Guid id, string actorId, bool itemReturnedToStore, CancellationToken ct);
@@ -41,12 +42,17 @@ public sealed class AdminOrderService(IOrderService orders, IStaffPermissionChec
         await permissions.EnsureAsync(actorId, StaffPermissions.ManageOrders, ct);
         return await orders.DetailsAsync(id, actorId, true, ct);
     }
-    public async Task<OrderDto> MarkReadyAsync(Guid id, string actorId, CancellationToken ct)
+    public async Task<OrderDto> MarkReadyAsync(Guid id, string actorId, CancellationToken ct, string? trackingCode = null)
     {
         await permissions.EnsureAsync(actorId, StaffPermissions.ManageOrders, ct);
-        return await orders.MarkReadyAsync(id, actorId, ct);
+        return await orders.MarkReadyAsync(id, actorId, ct, trackingCode);
     }
-    public async Task<OrderDto> ConfirmPaymentAsync(Guid id, string actorId, string reference, CancellationToken ct)
+    public async Task<OrderDto> ConfirmAsync(Guid id, string actorId, CancellationToken ct)
+    {
+        await permissions.EnsureAsync(actorId, StaffPermissions.ManageOrders, ct);
+        return await orders.ConfirmAsync(id, actorId, ct);
+    }
+    public async Task<OrderDto> ConfirmPaymentAsync(Guid id, string actorId, string? reference, CancellationToken ct)
     {
         await permissions.EnsureAsync(actorId, StaffPermissions.ManageOrders, ct);
         return await orders.ConfirmPaymentAsync(id, actorId, reference, ct);

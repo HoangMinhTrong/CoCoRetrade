@@ -42,16 +42,16 @@ public sealed class ProductLifecycleService(IStaffPermissionChecker permissions)
 
 public interface IOrderLifecycleService
 {
-    void MarkReady(Order order);
-    void ConfirmPayment(Order order, string adminId, string reference, DateTime nowUtc);
+    void MarkReady(Order order, string? trackingCode = null);
+    void ConfirmPayment(Order order, string adminId, string? reference, DateTime nowUtc);
     void Complete(Order order, Product product, DateTime nowUtc);
     void Cancel(Order order, Product product, bool isAdmin, DateTime nowUtc);
 }
 
 public sealed class OrderLifecycleService : IOrderLifecycleService
 {
-    public void MarkReady(Order order) => order.MarkReady();
-    public void ConfirmPayment(Order order, string adminId, string reference, DateTime nowUtc) =>
+    public void MarkReady(Order order, string? trackingCode = null) => order.MarkReady(trackingCode);
+    public void ConfirmPayment(Order order, string adminId, string? reference, DateTime nowUtc) =>
         order.ConfirmPayment(adminId, reference, nowUtc);
     public void Complete(Order order, Product product, DateTime nowUtc) => order.Complete(product, nowUtc);
     public void Cancel(Order order, Product product, bool isAdmin, DateTime nowUtc) =>

@@ -14,17 +14,28 @@ public sealed class CartController(ICartService cart) : Controller
     public async Task<IActionResult> Index(CancellationToken ct) =>
         View(await cart.ItemsAsync(UserId, ct));
 
+    [HttpGet]
+    public async Task<IActionResult> Count(CancellationToken ct) =>
+        Json(new { count = await cart.CountAsync(UserId, ct) });
+
     [HttpPost]
-    public async Task<IActionResult> Add(Guid productId, CancellationToken ct)
+    public async Task<IActionResult> Add(Guid productId, string? returnUrl, CancellationToken ct)
     {
         try
         {
             await cart.AddAsync(UserId, productId, ct);
+            if (Request.Headers.Accept.ToString().Contains("application/json", StringComparison.OrdinalIgnoreCase))
+                return Json(new { count = await cart.CountAsync(UserId, ct), message = "Đã thêm vào giỏ hàng." });
             TempData["Message"] = "Đã thêm món đồ vào giỏ. Món đồ vẫn có thể được người khác mua trước khi bạn đặt hàng.";
         }
         catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
-        { TempData["Error"] = ex.Message; }
-        return RedirectToAction(nameof(Index));
+        {
+            if (Request.Headers.Accept.ToString().Contains("application/json", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { error = ex.Message });
+            TempData["Error"] = ex.Message;
+        }
+        return !string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl)
+            ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Index));
     }
 
     [HttpPost]

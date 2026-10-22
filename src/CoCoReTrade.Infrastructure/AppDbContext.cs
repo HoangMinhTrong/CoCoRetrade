@@ -34,6 +34,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<Wallet> Wallets => Set<Wallet>();
     public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
     public DbSet<PlatformCommissionEntry> PlatformCommissionEntries => Set<PlatformCommissionEntry>();
+    public DbSet<PlatformCommissionWithdrawal> PlatformCommissionWithdrawals => Set<PlatformCommissionWithdrawal>();
+    public DbSet<AdminPayoutAccount> AdminPayoutAccounts => Set<AdminPayoutAccount>();
     public DbSet<WithdrawalRequest> WithdrawalRequests => Set<WithdrawalRequest>();
     public DbSet<MarketplaceNotification> MarketplaceNotifications => Set<MarketplaceNotification>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
@@ -69,6 +71,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             e.Property(x => x.Size).HasMaxLength(30).IsRequired();
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
             e.Property(x => x.RejectionReason).HasMaxLength(1000);
+            e.Property(x => x.PreliminaryStatus).HasConversion<string>().HasMaxLength(32);
+            e.Property(x => x.PreliminaryReason).HasMaxLength(1000);
             e.Property(x => x.OriginalPrice).HasColumnType("decimal(18,0)");
             e.Property(x => x.AskingPrice).HasColumnType("decimal(18,0)");
             e.Property(x => x.RowVersion).IsRowVersion();
@@ -141,6 +145,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             e.Property(x => x.DeliveryNote).HasMaxLength(500);
             e.Property(x => x.PickupAddress).HasMaxLength(300);
             e.Property(x => x.PaymentReference).HasMaxLength(100);
+            e.Property(x => x.TrackingCode).HasMaxLength(100);
             e.Property(x => x.ItemAmount).HasColumnType("decimal(18,0)");
             e.Property(x => x.ShippingFee).HasColumnType("decimal(18,0)");
             e.Property(x => x.TotalAmount).HasColumnType("decimal(18,0)");
@@ -231,6 +236,24 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             e.HasIndex(x => x.OrderId).IsUnique();
             e.HasIndex(x => x.CreatedAtUtc);
             e.HasOne<Order>().WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<PlatformCommissionWithdrawal>(e =>
+        {
+            e.ToTable("PlatformCommissionWithdrawals"); e.HasKey(x => x.Id);
+            e.Property(x => x.Amount).HasColumnType("decimal(18,0)");
+            e.Property(x => x.BankAccountNumber).HasMaxLength(30).IsRequired();
+            e.Property(x => x.BankName).HasMaxLength(100).IsRequired();
+            e.HasIndex(x => new { x.AdminId, x.RequestKey }).IsUnique();
+            e.HasIndex(x => x.CreatedAtUtc);
+            e.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.AdminId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<AdminPayoutAccount>(e =>
+        {
+            e.ToTable("AdminPayoutAccounts"); e.HasKey(x => x.AdminId);
+            e.Property(x => x.BankAccountNumber).HasMaxLength(30).IsRequired();
+            e.Property(x => x.BankName).HasMaxLength(100).IsRequired();
+            e.HasOne<ApplicationUser>().WithOne().HasForeignKey<AdminPayoutAccount>(x => x.AdminId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
         b.Entity<WithdrawalRequest>(e =>
         {

@@ -24,9 +24,22 @@ public sealed class WalletsController(IAdminWalletService wallets, IWalletServic
         var wallet = await wallets.DetailsAsync(ActorId, id, ct);
         return wallet is null ? NotFound() : View(wallet);
     }
-    [HttpGet]
+    [Authorize(Roles = "Admin"), HttpGet]
     public async Task<IActionResult> Platform(CancellationToken ct) =>
         View(await platformCommissions.GetAsync(ActorId, ct));
+    [Authorize(Roles = "Admin"), HttpPost]
+    public async Task<IActionResult> WithdrawPlatform(Guid requestKey, decimal amount,
+        string? bankAccountNumber, string? bankName, CancellationToken ct)
+    {
+        try
+        {
+            await platformCommissions.WithdrawAsync(ActorId, requestKey, amount, bankAccountNumber, bankName, ct);
+            TempData["Message"] = "Đã ghi nhận rút hoa hồng và trừ số dư ví CoCo. Bạn tự thực hiện chuyển khoản ngoài hệ thống.";
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        { TempData["Error"] = ex.Message; }
+        return RedirectToAction(nameof(Platform));
+    }
     [HttpPost]
     public async Task<IActionResult> Credit(Guid orderId, bool confirmed, CancellationToken ct)
     {

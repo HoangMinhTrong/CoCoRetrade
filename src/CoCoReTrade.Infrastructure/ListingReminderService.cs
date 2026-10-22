@@ -20,7 +20,7 @@ public sealed class ListingReminderService(AppDbContext db, TimeProvider clock,
             .Where(x => x.Status == ProductStatus.Active && x.ReminderSentAtUtc == null &&
                         x.PublishedAtUtc <= cutoff)
             .OrderBy(x => x.PublishedAtUtc)
-            .Select(x => new { x.Id, x.SellerId, x.ConsignmentCode })
+            .Select(x => new { x.Id, x.SellerId, x.Name })
             .Take(batchSize).ToListAsync(cancellationToken);
         var sent = 0;
         foreach (var item in due)
@@ -39,7 +39,8 @@ public sealed class ListingReminderService(AppDbContext db, TimeProvider clock,
             db.MarketplaceNotifications.Add(new MarketplaceNotification
             {
                 Id = Guid.NewGuid(), UserId = item.SellerId, Category = "Listings",
-                Message = $"Sản phẩm {item.ConsignmentCode} đã mở bán {afterDays} ngày. Bạn có thể liên hệ CoCo để xem lại giá.",
+                ProductId = item.Id,
+                Message = $"Sản phẩm {item.Name} đã mở bán {afterDays} ngày. Bạn có thể liên hệ CoCo để xem lại giá.",
                 CreatedAtUtc = now
             });
             await db.SaveChangesAsync(cancellationToken);

@@ -15,7 +15,7 @@ public sealed class OfferFlowTests
         var product = Product.Submit(Seller, "CC-2026-000100", "Áo khoác denim", "Zara", "Áo", "M",
             500_000, 300_000, 95, allowOffers,
             [new ProductImage("a.jpg", "image/jpeg", 0), new ProductImage("b.jpg", "image/jpeg", 1), new ProductImage("c.jpg", "image/jpeg", 2)]);
-        if (active) { product.RecordInspection("inspector-1", true, product.Name, product.Brand, product.Category, product.Size, product.OriginalPrice, product.AskingPrice, 95, "Physical item checked", [], Start.UtcDateTime); product.Publish("CC-2026-000100", Start.UtcDateTime); }
+        if (active) { product.ReviewPreliminarily("admin-1", PreliminaryReviewStatus.Approved, null, Start.UtcDateTime); product.RecordInspection("inspector-1", true, product.Name, product.Brand, product.Category, product.Size, product.OriginalPrice, product.AskingPrice, 95, "Physical item checked", [], Start.UtcDateTime); product.Publish("CC-2026-000100", Start.UtcDateTime); }
         var store = new MemoryStore(product);
         var clock = new ManualClock(Start);
         var policy = new MarketplacePolicy(25, 15);
@@ -38,10 +38,11 @@ public sealed class OfferFlowTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new MarketplacePolicy(19));
         Assert.Throws<ArgumentOutOfRangeException>(() => new MarketplacePolicy(31));
-        var (product, service, _, _) = Setup();
+        var (product, service, store, _) = Setup();
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => service.MakeAsync(product.Id, Buyer, 224_999, default));
         var accepted = await service.MakeAsync(product.Id, Buyer, 225_000, default);
         Assert.Equal(225_000, accepted.CurrentPrice);
+        Assert.Contains(product.Name, Assert.Single(store.Notifications).Message);
     }
 
     [Fact]

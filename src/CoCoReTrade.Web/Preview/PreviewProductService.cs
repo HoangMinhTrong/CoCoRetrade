@@ -86,6 +86,8 @@ public sealed class PreviewProductService : IProductService
 
     public Task<ProductDetails> SubmitAsync(string sellerId, SubmitListing request, CancellationToken ct) =>
         throw new NotSupportedException("Preview mode is read-only.");
+    public Task<ProductDetails> EditAsync(string sellerId, Guid id, EditListing request, CancellationToken ct) =>
+        throw new NotSupportedException("Preview mode is read-only.");
     public Task<IReadOnlyList<ProductCard>> ClosetAsync(string sellerId, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<ProductCard>>([]);
     public Task<IReadOnlyList<ProductCard>> PendingAsync(string? search, CancellationToken ct) =>

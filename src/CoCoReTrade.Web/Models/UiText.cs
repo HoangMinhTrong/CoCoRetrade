@@ -71,6 +71,7 @@ public static class UiText
             "Products.Published" => "Đã đăng bán sản phẩm",
             "Products.Rejected" => "Đã từ chối sản phẩm",
             "OrderPlaced" => "Đã tạo đơn hàng",
+            "OrderConfirmed" => "CoCo đã xác nhận đơn hàng",
             "OrderCancelled" => "Đã hủy đơn hàng",
             "OrderPrepared" => "Đã chuẩn bị đơn hàng",
             "OrderCompleted" => "Đã hoàn tất đơn hàng",

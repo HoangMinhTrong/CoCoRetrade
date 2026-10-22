@@ -5,7 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CoCoReTrade.Web.Controllers.Api.V1;
 
-public sealed record PaymentConfirmation(string Reference);
+public sealed record PaymentConfirmation(string? Reference);
+public sealed record ShippingHandoffRequest(string? TrackingCode);
 public sealed record ReturnedDeliveryConfirmation(bool ItemReturnedToStore);
 
 [ApiController]
@@ -23,8 +24,13 @@ public sealed class AdminOrdersController(IAdminOrderService orders) : Controlle
         return order is null ? NotFound() : Ok(order);
     }
     [HttpPost("{id:guid}/ready")]
-    public Task<ActionResult<OrderDto>> Ready(Guid id, CancellationToken ct) =>
-        Execute(() => orders.MarkReadyAsync(id, AdminId, ct));
+    public Task<ActionResult<OrderDto>> Ready(Guid id,
+        [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] ShippingHandoffRequest? request,
+        CancellationToken ct) =>
+        Execute(() => orders.MarkReadyAsync(id, AdminId, ct, request?.TrackingCode));
+    [HttpPost("{id:guid}/confirm")]
+    public Task<ActionResult<OrderDto>> Confirm(Guid id, CancellationToken ct) =>
+        Execute(() => orders.ConfirmAsync(id, AdminId, ct));
     [HttpPost("{id:guid}/confirm-payment")]
     public Task<ActionResult<OrderDto>> ConfirmPayment(Guid id, [FromBody] PaymentConfirmation request, CancellationToken ct) =>
         Execute(() => orders.ConfirmPaymentAsync(id, AdminId, request.Reference, ct));

@@ -3,5 +3,4 @@
 <div class="auth-card panel"><div class="eyebrow">Kích hoạt tài khoản</div><h1 class="mt-2">Nhập mã xác thực</h1><p class="subtitle">Mã 6 chữ số đã được gửi qua email và có hiệu lực 5 phút.</p>
 <form asp-action="ConfirmOtp" method="post"><input asp-for="UserId" type="hidden" /><div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div><label asp-for="Code" class="form-label"></label><input asp-for="Code" class="form-control" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required /><span asp-validation-for="Code" class="text-danger"></span><button class="btn btn-wine w-100 mt-3">Xác thực</button></form>
 <form asp-action="ResendOtp" method="post" class="mt-3"><input type="hidden" name="userId" value="@Model.UserId" /><input type="hidden" name="purpose" value="activation" /><button class="btn btn-outline-wine w-100">Gửi mã mới</button></form>
-@if (TempData["DevCode"] is string code) { <div class="alert alert-info mt-3">Mã thử nghiệm: @code</div> }
 </div>

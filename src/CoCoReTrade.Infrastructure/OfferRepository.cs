@@ -34,8 +34,12 @@ public sealed class OfferRepository(AppDbContext db) : IOfferRepository
     public async Task AddOfferAsync(Offer offer, CancellationToken ct) => await db.Offers.AddAsync(offer, ct);
     public void AddEvent(OfferEvent offerEvent) => db.OfferEvents.Add(offerEvent);
     public void AddNotification(MarketplaceNotification notification) => db.MarketplaceNotifications.Add(notification);
-    public async Task<IReadOnlyList<MarketplaceNotification>> NotificationsAsync(string userId, CancellationToken ct) =>
-        await db.MarketplaceNotifications.AsNoTracking().Where(x => x.UserId == userId)
+    public async Task<IReadOnlyList<MarketplaceNotification>> NotificationsAsync(string userId, CancellationToken ct)
+    {
+        var notifications = await db.MarketplaceNotifications.AsNoTracking().Where(x => x.UserId == userId)
             .OrderByDescending(x => x.CreatedAtUtc).Take(100).ToListAsync(ct);
+        await NotificationProductNames.ApplyAsync(db, notifications, ct);
+        return notifications;
+    }
     public Task SaveAsync(CancellationToken ct) => db.SaveChangesAsync(ct);
 }

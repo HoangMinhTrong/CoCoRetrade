@@ -59,6 +59,12 @@ public sealed class InspectionController(IAdminProductService products) : Contro
         }
     }
 
+    [HttpPost, Authorize(Roles = "Admin"), Authorize(Policy = StaffPermissions.Inspect), Authorize(Policy = StaffPermissions.Reject)]
+    public Task<IActionResult> Preliminary(Guid id, PreliminaryReviewStatus decision, ProductDecisionForm form,
+        CancellationToken ct) =>
+        Decide(id, () => products.ReviewPreliminarilyAsync(ActorId, id, decision, form.Reason,
+            form.ExpectedRowVersion, ct), "Đã lưu quyết định duyệt sơ bộ.");
+
     [HttpPost, Authorize(Policy = StaffPermissions.Inspect)]
     public Task<IActionResult> Cover(Guid id, Guid imageId, string expectedRowVersion, CancellationToken ct) =>
         Decide(id, () => products.SelectCoverAsync(ActorId, id, imageId, expectedRowVersion, ct),

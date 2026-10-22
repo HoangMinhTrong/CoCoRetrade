@@ -14,6 +14,14 @@ public sealed class ListingsController(IProductService products) : ControllerBas
     [HttpGet("mine")]
     public async Task<ActionResult<IReadOnlyList<ProductCard>>> Mine(CancellationToken ct) =>
         Ok(await products.ClosetAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)!, ct));
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<ProductDetails>> Details(Guid id, CancellationToken ct)
+    {
+        var product = await products.VisibleDetailsAsync(id,
+            User.FindFirstValue(ClaimTypes.NameIdentifier), false, ct);
+        return product is null ? NotFound() : Ok(product);
+    }
     [HttpPost]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(55_000_000)]

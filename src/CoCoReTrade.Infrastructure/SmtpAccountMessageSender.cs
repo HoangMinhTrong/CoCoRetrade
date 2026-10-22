@@ -1,14 +1,12 @@
 using System.Net;
 using System.Net.Mail;
+using System.Text;
 using CoCoReTrade.Application;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace CoCoReTrade.Infrastructure;
 
-public sealed class SmtpAccountMessageSender(IConfiguration configuration, IHostEnvironment environment,
-    ILogger<SmtpAccountMessageSender> logger) : IAccountMessageSender
+public sealed class SmtpAccountMessageSender(IConfiguration configuration) : IAccountMessageSender
 {
     public Task SendActivationAsync(string email, string link) => SendAsync(email, "Kích hoạt tài khoản CoCo", link);
     public Task SendPasswordResetAsync(string email, string link) => SendAsync(email, "Đặt lại mật khẩu CoCo", link);
@@ -18,19 +16,23 @@ public sealed class SmtpAccountMessageSender(IConfiguration configuration, IHost
 
     private async Task SendAsync(string email, string subject, string body)
     {
-        if (environment.IsDevelopment())
-        {
-            logger.LogInformation("Thông báo tài khoản trong môi trường phát triển gửi tới {Email}: {Body}", email, body);
-            return;
-        }
-        var host = configuration["Smtp:Host"] ?? throw new InvalidOperationException("Cần cấu hình máy chủ SMTP.");
-        var from = configuration["Smtp:From"] ?? throw new InvalidOperationException("Cần cấu hình địa chỉ gửi SMTP.");
+        var host = configuration["Smtp:Host"];
+        var from = configuration["Smtp:From"];
+        var user = configuration["Smtp:User"];
+        var password = configuration["Smtp:Password"];
+        if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(from) ||
+            string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(password))
+            throw new InvalidOperationException("Cần cấu hình đầy đủ Smtp:Host, Smtp:From, Smtp:User và Smtp:Password để gửi mã qua email.");
         using var client = new SmtpClient(host, int.TryParse(configuration["Smtp:Port"], out var port) ? port : 587)
         {
             EnableSsl = true,
-            Credentials = new NetworkCredential(configuration["Smtp:User"], configuration["Smtp:Password"])
+            Credentials = new NetworkCredential(user, password)
         };
-        using var message = new MailMessage(from, email, subject, body);
+        using var message = new MailMessage(from, email, subject, body)
+        {
+            SubjectEncoding = Encoding.UTF8,
+            BodyEncoding = Encoding.UTF8
+        };
         await client.SendMailAsync(message);
     }
 }

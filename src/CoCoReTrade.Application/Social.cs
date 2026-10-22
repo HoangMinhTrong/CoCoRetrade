@@ -49,7 +49,8 @@ public sealed class SocialService(ISocialRepository repository, TimeProvider clo
                 repository.AddFavorite(new Favorite { UserId = userId, ProductId = productId, CreatedAtUtc = now });
                 if (product.SellerId != userId)
                     repository.AddNotification(new MarketplaceNotification { Id = Guid.NewGuid(), UserId = product.SellerId,
-                        Category = "Social", Message = $"Có người thích món đồ {product.Sku} của bạn.", CreatedAtUtc = now });
+                        Category = "Social", ProductId = product.Id,
+                        Message = $"Có người thích món đồ {product.Name} của bạn.", CreatedAtUtc = now });
             }
             else repository.RemoveFavorite(userId, productId);
             await repository.SaveAsync(ct);

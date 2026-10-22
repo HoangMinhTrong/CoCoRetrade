@@ -19,7 +19,7 @@ Hướng phụ thuộc: Application → Domain; Infrastructure → Application/D
 - Khách hàng: thanh điều hướng 5 mục trên điện thoại; tìm kiếm có bộ lọc mở rộng; trang sản phẩm ưu tiên mua ngay, đề xuất giá, giỏ hàng và nhắn người bán.
 - Trang cá nhân nhóm riêng mua sắm, ký gửi, ví và hỗ trợ. Thông báo chưa đọc được làm nổi bật, giữ liên kết đến nội dung liên quan.
 - Khu quản trị có menu riêng theo quyền: kiểm định, sản phẩm, đơn hàng, ví, báo cáo, người dùng và hỗ trợ. Trên điện thoại, bấm nút menu ở góc trái để mở.
-- Phiếu kiểm định tách bước lưu kết quả và duyệt đăng bán. Ghi chú và ảnh bổ sung vẫn không bắt buộc.
+- Bài ký gửi qua duyệt sơ bộ bằng ảnh rồi kiểm định hiện vật tại tiệm trước khi đăng bán. Ghi chú và ảnh kiểm định bổ sung không bắt buộc.
 - Logo SVG được dựng theo mẫu CoCo cung cấp, lưu tại `src/CoCoReTrade.Web/wwwroot/images/coco-logo.svg`; biểu tượng dùng chung ở `images/icons.svg`. Màu sắc, khoảng cách và bố cục responsive nằm trong `wwwroot/css/site.css`.
 - Sau khi cập nhật giao diện, khởi động lại ứng dụng và nhấn **Ctrl + F5** nếu trình duyệt còn hiển thị bản cũ. Thay đổi giao diện này không cần migration cơ sở dữ liệu.
 
@@ -27,7 +27,7 @@ Hướng phụ thuộc: Application → Domain; Infrastructure → Application/D
 
 - Bộ công cụ .NET 10 (`dotnet --version`)
 - Microsoft SQL Server và quyền tạo cơ sở dữ liệu `CoCoReTrade`
-- Thông tin SMTP để gửi email kích hoạt/đặt lại mật khẩu ngoài môi trường phát triển
+- Thông tin SMTP để gửi email kích hoạt/đặt lại mật khẩu trong mọi môi trường
 
 Workspace có sẵn bộ công cụ cục bộ tại `.dotnet/dotnet.exe` (Git bỏ qua). Nếu máy chưa cài .NET toàn hệ thống, dùng tệp này thay cho lệnh `dotnet`.
 
@@ -38,7 +38,6 @@ Chạy từ thư mục gốc của dự án:
 ```powershell
 dotnet user-secrets set "ConnectionStrings:CoCo" "Server=localhost;Database=CoCoReTrade;Trusted_Connection=True;TrustServerCertificate=True" --project src/CoCoReTrade.Web
 dotnet user-secrets set "Admin:InitialPassword" "<choose-a-strong-temporary-password>" --project src/CoCoReTrade.Web
-dotnet user-secrets set "Shipping:StoreAddress" "<actual CoCo store address>" --project src/CoCoReTrade.Web
 ```
 
 Bạn cũng có thể đặt `COCO_ADMIN_INITIAL_PASSWORD` trong biến môi trường. Ứng dụng chỉ cần giá trị này **khi tạo quản trị viên ban đầu**. Không đưa mật khẩu vào Git. Identity băm mật khẩu qua `UserManager`; quản trị viên phải đổi mật khẩu sau lần đăng nhập đầu.
@@ -47,7 +46,19 @@ Tài khoản quản trị mặc định là `admin@cocoretrade.vn` / `0905123456
 
 Quản trị viên thứ hai tùy chọn có tên `admin1`, đăng nhập bằng `admin1@cocoretrade.vn`. Để tạo trên cơ sở dữ liệu khác, đặt `COCO_ADMIN1_INITIAL_PASSWORD` trước lần khởi động đầu rồi xóa biến môi trường. Hệ thống băm mật khẩu qua Identity, cấp vai trò cần thiết và yêu cầu đổi mật khẩu ở lần đăng nhập đầu. Tài khoản thường đã dùng email này sẽ không được tự nâng quyền.
 
-Khi triển khai, đặt `Storage:Root`, `Smtp:Host`, `Smtp:Port`, `Smtp:From`, `Smtp:User` và `Smtp:Password` bằng biến môi trường hoặc kho bí mật; xem `appsettings.example.json`. Trong môi trường phát triển, mã kích hoạt và đặt lại mật khẩu gồm 6 số được hiển thị ở trang xác nhận và ghi log. Môi trường khác cần SMTP. Không bật hiển thị mã thử nghiệm khi vận hành thật.
+Để gửi mã tới email thật, cấu hình SMTP trước khi thử đăng ký. Dùng địa chỉ và thông tin xác thực do nhà cung cấp email cấp; `Smtp:From` phải là địa chỉ được phép gửi. Ví dụ với user secrets trên máy phát triển:
+
+```powershell
+dotnet user-secrets set "Smtp:Host" "<smtp-host>" --project src/CoCoReTrade.Web
+dotnet user-secrets set "Smtp:Port" "587" --project src/CoCoReTrade.Web
+dotnet user-secrets set "Smtp:From" "<verified-sender-address>" --project src/CoCoReTrade.Web
+dotnet user-secrets set "Smtp:User" "<smtp-username>" --project src/CoCoReTrade.Web
+dotnet user-secrets set "Smtp:Password" "<smtp-password-or-app-password>" --project src/CoCoReTrade.Web
+```
+
+Nếu dùng Gmail, `smtp.gmail.com` và cổng `587` đã được đặt sẵn trong `appsettings.json`. Bật Xác minh 2 bước cho tài khoản Google, tạo **mật khẩu ứng dụng** tại https://myaccount.google.com/apppasswords, rồi đặt email Gmail gửi mã cho cả `Smtp:From` và `Smtp:User`. Đặt mật khẩu ứng dụng (không phải mật khẩu đăng nhập Gmail) cho `Smtp:Password`. Không chia sẻ mật khẩu ứng dụng qua chat hoặc commit vào Git.
+
+Khi triển khai, đặt thêm `Storage:Root` và các giá trị SMTP trên bằng biến môi trường (ví dụ `Smtp__Host`) hoặc kho bí mật; xem `appsettings.example.json`. Ứng dụng dùng SMTP với STARTTLS trên cổng 587 mặc định. Nếu thiếu cấu hình hoặc gửi thất bại, tài khoản mới vẫn được tạo ở trạng thái chưa kích hoạt và người dùng có thể gửi lại mã sau khi SMTP hoạt động. Mã không được hiện trên trang hoặc ghi vào log.
 
 ## Khôi phục gói, cập nhật cơ sở dữ liệu và chạy ứng dụng
 
@@ -86,10 +97,12 @@ Phần này mô tả **những gì mã nguồn hiện tại xử lý**, theo th�
 
 ```mermaid
 flowchart LR
-    A["Người bán gửi ký gửi<br/>CD-01-1410"] --> B["Chờ kiểm định"]
-    B --> C["Kiểm định viên kiểm tra hàng thật"]
+    A["Người bán gửi ký gửi<br/>CD-01-1410"] --> B["Chờ duyệt sơ bộ qua ảnh"]
+    B -->|Cần cập nhật| A
+    B -->|Từ chối, nêu lý do| E["Bài bị từ chối"]
+    B -->|Duyệt sơ bộ| C["Kiểm định viên kiểm tra hàng thật tại tiệm"]
     C -->|Đạt| D["Chờ người có quyền đăng bán"]
-    C -->|Không đạt| E["Quản trị viên từ chối, nêu lý do"]
+    C -->|Không đạt, nêu lý do| E
     D -->|Đăng bán, cấp SKU CC-YYYY-XXXXXX| F["Đang bán: hiện công khai"]
     F -->|Người mua đặt đơn thành công| G["Đã giữ hàng: ẩn khỏi sàn"]
     G -->|Hủy đơn hợp lệ| F
@@ -101,8 +114,8 @@ Việc **chấp nhận giá đề xuất không giữ sản phẩm**. Chỉ thao
 ### 1. Mở ứng dụng, tài khoản và phân quyền
 
 1. Trang `/Splash` hiển thị khung chờ khi tải, kiểm tra phiên Identity và chuyển người đã đăng nhập tới Trang chủ, khách chưa đăng nhập tới Đăng nhập. Trang chủ và Khám phá vẫn có thể được mở trực tiếp để xem hàng `ACTIVE`.
-2. Đăng ký bằng họ tên, email, số điện thoại duy nhất và mật khẩu hợp lệ. Hệ thống gửi **mã xác thực 6 số qua email** để kích hoạt; mã có hiệu lực 5 phút và có luồng gửi lại. Trong môi trường phát triển, mã hiện trên trang xác nhận để thử nghiệm; môi trường khác cần cấu hình SMTP.
-3. Đăng nhập chung bằng **email hoặc số điện thoại + mật khẩu**. Identity kiểm tra tài khoản đã kích hoạt, trạng thái khóa và chính sách điểm tín nhiệm. Quên mật khẩu: nhập email/số điện thoại → nhận OTP email → xác minh → đặt mật khẩu mới → thu hồi phiên cũ và tạo phiên đăng nhập mới. Tài khoản có thể đổi mật khẩu và đăng xuất tại Hồ sơ.
+2. Đăng ký bằng họ tên, email, số điện thoại duy nhất và mật khẩu hợp lệ. Hệ thống gửi **mã xác thực 6 số qua email** để kích hoạt; mã có hiệu lực 5 phút và có luồng gửi lại. Cần cấu hình SMTP trong mọi môi trường.
+3. Đăng nhập chung bằng **email hoặc số điện thoại + mật khẩu**. Identity kiểm tra tài khoản đã kích hoạt, trạng thái khóa và chính sách điểm tín nhiệm. Nhập sai mật khẩu nhiều lần vẫn khóa tạm tài khoản thông thường; tài khoản có vai trò `Admin` không bị khóa tự động bởi lỗi mật khẩu. Quên mật khẩu: nhập email/số điện thoại → nhận OTP email → xác minh → đặt mật khẩu mới → thu hồi phiên cũ và tạo phiên đăng nhập mới. Tài khoản có thể đổi mật khẩu và đăng xuất tại Hồ sơ.
 4. Vai trò `User` mua/bán; `Inspector` được xem và kiểm định hàng chờ duyệt; `Admin` quản trị đầy đủ. Quyền `Products.Publish` là quyền riêng: quản trị viên có sẵn, kiểm định viên chỉ có khi được cấp rõ ràng. Thay đổi vai trò/quyền sẽ làm phiên cũ mất hiệu lực. Quản trị viên khởi tạo từ cấu hình phải đổi mật khẩu sau lần đăng nhập đầu.
 5. Tài khoản bị hạ điểm tín nhiệm dưới ngưỡng cấu hình có thể bị tạm khóa; quản trị viên thay đổi điểm hoặc khóa tài khoản phải ghi lý do và lưu nhật ký.
 
@@ -115,11 +128,14 @@ Việc **chấp nhận giá đề xuất không giữ sản phẩm**. Chỉ thao
 
 ### 3. Ký gửi và kiểm định
 
-1. Người bán mở **Đăng bán**, nhập tên, thương hiệu, danh mục, kích cỡ, giá gốc, giá mong muốn, phần trăm độ mới và bật/tắt `AllowOffers`. Tải **3–10 ảnh JPG/PNG/WebP**, tối đa 5 MB mỗi ảnh. Ảnh được kiểm tra định dạng, kích thước, số lượng và lưu ở vùng riêng.
-2. Bấm gửi duyệt: hệ thống cấp **mã chờ duyệt** dạng `CD-01-1410`, lưu sản phẩm `PENDING_APPROVAL` và báo nhân viên. Người bán theo dõi mã này trong **Tủ đồ của tôi**.
-3. Kiểm định viên tra cứu danh sách chờ bằng mã chờ duyệt/tên món/người bán, nhận món đồ thật, ghi kết quả đạt/không đạt, thông tin xác minh (tên, thương hiệu, loại, kích cỡ, giá, độ mới), ghi chú và ảnh kiểm định tùy chọn. Kiểm định viên không được tự kiểm định bài do mình đăng. Kiểm định đạt giúp bài đủ điều kiện đăng bán nhưng chưa tạo SKU.
-4. Người có `Products.Publish` kiểm tra lại và bấm **Duyệt & Đăng bán**. Trong cùng thao tác, hệ thống cấp SKU chính thức `CC-YYYY-XXXXXX` duy nhất và chuyển sản phẩm sang `ACTIVE`; SKU xuất hiện trên trang chi tiết, dùng để tìm kiếm và in tem QR dán lên món hàng. Quản trị viên có thể **Từ chối** bài đã kiểm định với lý do bắt buộc, chuyển sang `REJECTED`. Hai kết quả đều báo người bán; kiểm định, đăng bán và từ chối đều được ghi nhật ký.
-5. Tủ đồ cá nhân cho người bán xem hàng chờ duyệt, bị từ chối, đang bán và đã bán. Trạng thái chờ/từ chối và ảnh liên quan chỉ mở cho chủ bài hoặc nhân viên có quyền.
+1. Người bán mở **Đăng bán**, nhập tên, danh mục, kích cỡ, giá gốc, giá mong muốn, phần trăm độ mới và bật/tắt `AllowOffers`; thương hiệu không bắt buộc. Tải **3–10 ảnh JPG/PNG/WebP**, tối đa 5 MB mỗi ảnh. Có thể chọn ảnh nhiều lần, xem trước và xóa từng ảnh trước khi gửi.
+2. Bấm gửi duyệt: hệ thống cấp **mã chờ duyệt** dạng `CD-01-1410`, lưu sản phẩm `PENDING_APPROVAL` và báo nhân viên. Người bán theo dõi mã trong **Tủ đồ của tôi**; được sửa thông tin và ảnh cho tới khi duyệt sơ bộ.
+3. Admin xem ảnh, mẫu mã và kiểu dáng rồi chọn **Từ chối**, **Cần cập nhật** (đều bắt buộc ghi lý do) hoặc **Duyệt sơ bộ**. Yêu cầu cập nhật được báo cho người bán; bài được gửi lại để xét duyệt sau khi sửa. Sau duyệt sơ bộ, người bán không còn sửa được.
+4. Sau duyệt sơ bộ, kiểm định viên nhận món đồ thật tại tiệm, ghi kết quả đạt/không đạt, thông tin xác minh, ghi chú và ảnh bổ sung tùy chọn. Ảnh bổ sung có xem trước, chọn cộng dồn và xóa từng ảnh trước khi lưu. Kiểm định viên không được tự kiểm định bài do mình đăng.
+5. Nếu kiểm định đạt, người có `Products.Publish` xác nhận đã kiểm tra hiện vật rồi bấm **Duyệt & Đăng bán**. Hệ thống cấp SKU chính thức `CC-YYYY-XXXXXX` và chuyển sản phẩm sang `ACTIVE`; trước đó sản phẩm không công khai. Từ chối ở giai đoạn này vẫn cần lý do. Các quyết định được thông báo và ghi nhật ký.
+6. Tủ đồ cá nhân cho người bán xem hàng chờ duyệt, bị từ chối, đang bán và đã bán. Trạng thái chờ/từ chối và ảnh liên quan chỉ mở cho chủ bài hoặc nhân viên có quyền.
+
+Migration `PreliminaryProductReview` giữ các bài đã kiểm định từ trước ở trạng thái đã duyệt sơ bộ để chúng tiếp tục bước đăng bán; bài chưa kiểm định sẽ chờ duyệt sơ bộ.
 
 ### 4. Trả giá và đề xuất lại
 
@@ -166,20 +182,20 @@ flowchart LR
 
 1. Người mua chọn **Mua ngay** ở giá niêm yết hoặc thanh toán bằng **đề xuất giá của chính mình đã được chấp nhận và còn hạn**. Không thể mua món của mình, món chưa đăng bán hay món đã giữ/bán. Máy chủ tính báo giá; trình duyệt không được quyết định giá, phí hoặc chủ hàng.
 2. Chọn **Tới CoCo lấy**: nhập tên, số di động Việt Nam và lịch lấy trong giờ mở cửa cấu hình (mặc định 09:00–21:00). Với **mua ngay**, lịch lấy trong **1–3 ngày tới**. Với **giá đã chấp nhận**, lịch lấy có thể là hôm nay nhưng phải trong **24 giờ kể từ lúc chấp nhận giá**; máy chủ kiểm tra giờ lấy trước hạn giá thỏa thuận. Phí nhận tại cửa hàng **0 VNĐ**; chức năng chỉ mở khi cấu hình địa chỉ cửa hàng thật.
-3. Chọn **Giao tận nơi**: nhập tên, số điện thoại, **tỉnh/thành phố + phường/xã + địa chỉ cụ thể**, chọn khung giao và ghi chú nếu cần; có thể chọn địa chỉ đã lưu. Ứng dụng không dựa vào danh sách quận/huyện cũ. Bảng `ShippingZones` xác định cặp tỉnh/phường nội thành: phí **20,000 VNĐ**; địa chỉ hợp lệ khác **35,000 VNĐ**. Phí hiển thị khi chọn đủ vùng.
+3. Chọn **Giao tận nơi**: nhập tên, số điện thoại, **tỉnh/thành phố + phường/xã + địa chỉ cụ thể** và ghi chú nếu cần; có thể chọn địa chỉ đã lưu. Đà Nẵng mặc định tính phí nội thành **20,000 VNĐ**; địa chỉ khác **35,000 VNĐ**. Bảng `ShippingZones` có thể ghi đè mức nội thành/ngoại thành cho từng cặp tỉnh/phường. Phí hiển thị khi chọn đủ vùng.
 4. Màn đặt hàng hiển thị **tiền hàng + phí vận chuyển = tổng thanh toán** theo kết quả máy chủ. Nếu chưa chọn đủ địa chỉ giao, phí còn chờ tính. Khách **không chuyển khoản trước**; giao tận nơi thì kiểm tra hàng rồi trả tiền mặt cho người giao hàng nếu nhận, tới CoCo lấy thì kiểm tra và trả tiền mặt tại cửa hàng. Hoa hồng CoCo mặc định **15%**, được cấu hình trong khoảng **15–20%**, tính trên **giá hàng cuối cùng**, không tính phí giao hàng.
    Chính sách dự kiến: khách từ chối nhận khi người giao hàng đến chịu phí vận chuyển một chiều; sau khi đã thanh toán cho người giao hàng thì không nhận yêu cầu hoàn trả vì đổi ý. Ứng dụng hiện **chưa có luồng thu riêng phí một chiều hoặc xử lý yêu cầu trả hàng**; các nội dung này cần được CoCo duyệt thành điều khoản chính thức trước khi áp dụng.
 5. Xác nhận: giao dịch SQL tạo một đơn `PENDING_PROCESSING`, trạng thái thanh toán `UNPAID`, rồi chuyển sản phẩm `ACTIVE → RESERVED`. Với đơn hẹn lấy tại CoCo, đó là lúc món đồ bắt đầu được tạm giữ, ẩn khỏi cửa hàng/tìm kiếm và xuất hiện tại **Quản trị → Tạm giữ chờ lấy** (`/Admin/Orders/HeldPickups`) cùng giờ hẹn, người nhận và hạn giá thỏa thuận. Đơn lưu bản chụp bất biến của món hàng, giá chốt, hoa hồng, phí giao hàng, người nhận, địa chỉ hoặc lịch lấy. Phiên bản dòng, ràng buộc một đơn còn hiệu lực cho một món và mã yêu cầu duy nhất chống mua trùng/gửi lại. Quản trị viên, người bán và người mua được báo. Người bán xem đơn mà không thấy địa chỉ/liên hệ riêng của người mua.
 
 ### 8. Xử lý, hủy và hoàn tất đơn
 
-- Người mua xem lịch sử/trạng thái đơn. Người mua chỉ được hủy đơn **chưa thanh toán và còn `PENDING_PROCESSING`**; quản trị viên có thể hủy thêm đơn pickup `READY_FOR_PICKUP` chưa thanh toán. Với đơn đã giao cho người giao hàng nhưng khách từ chối nhận, quản trị viên chỉ được ghi nhận không nhận hàng và mở bán lại **sau khi xác nhận món đồ thực tế đã quay về CoCo**; thao tác này chỉ áp dụng cho đơn `UNPAID` đang `SHIPPING`. Hủy hợp lệ chuyển đơn sang `CANCELLED`, trả sản phẩm `RESERVED → ACTIVE` và thông báo các bên.
-- Quản trị viên xem hàng đợi đơn, đánh dấu **sẵn sàng nhận tại cửa hàng** hoặc **đang giao**. Chỉ sau khi khách thực sự nhận hàng và CoCo xác nhận đã thu tiền, nhân viên nhập mã tham chiếu thanh toán rồi bấm **Giao hàng thành công / Khách đã nhận tại CoCo**. Xác nhận thanh toán chỉ khả dụng sau khi đơn đã sẵn sàng hoặc đang giao. Hoàn tất chuyển đơn `COMPLETED`, sản phẩm `SOLD` và ghi có ví người bán trong cùng giao dịch SQL.
+- Người mua xem lịch sử/trạng thái đơn với các mốc giờ đặt, CoCo xác nhận, bàn giao vận chuyển/sẵn sàng lấy và hoàn tất. Người mua chỉ được hủy đơn **chưa thanh toán, chưa được CoCo xác nhận và còn `PENDING_PROCESSING`**; quản trị viên có thể hủy thêm đơn pickup `READY_FOR_PICKUP` chưa thanh toán. Với đơn đã giao cho người giao hàng nhưng khách từ chối nhận, quản trị viên chỉ được ghi nhận không nhận hàng và mở bán lại **sau khi xác nhận món đồ thực tế đã quay về CoCo**; thao tác này chỉ áp dụng cho đơn `UNPAID` đang `SHIPPING`. Hủy hợp lệ chuyển đơn sang `CANCELLED`, trả sản phẩm `RESERVED → ACTIVE` và thông báo các bên.
+- Quản trị viên xem hàng đợi đơn, bấm **Xác nhận đơn hàng**, sau đó đánh dấu **sẵn sàng nhận tại cửa hàng** hoặc **bàn giao vận chuyển**. Mỗi thao tác được lưu thời điểm riêng. Chỉ sau khi khách thực sự nhận hàng và CoCo xác nhận đã thu tiền, nhân viên nhập mã tham chiếu thanh toán rồi bấm **Giao hàng thành công / Khách đã nhận tại CoCo**. Xác nhận thanh toán chỉ khả dụng sau khi đơn đã sẵn sàng hoặc đang giao. Hoàn tất chuyển đơn `COMPLETED`, sản phẩm `SOLD` và ghi có ví người bán trong cùng giao dịch SQL.
 - Tác vụ nền hết hạn tự hủy và mở bán lại **đơn vẫn chưa thanh toán, vẫn chờ xử lý** quá `Orders:UnpaidReservationMinutes` (mặc định 1,440 phút). Với đơn **giá thỏa thuận, nhận tại CoCo**, nếu quá 24 giờ tính từ lúc chấp nhận giá mà vẫn chưa nhận/chưa thanh toán, tác vụ nền hủy cả đơn đang chờ xử lý hoặc đã sẵn sàng tại cửa hàng, mở bán lại sản phẩm theo giá niêm yết. Đề xuất giá đã dùng không thể áp dụng lần nữa. Đơn **giao tận nơi theo giá thỏa thuận** chỉ cần được tạo trước khi giá hết hạn, không bị hủy theo quy tắc nhận tại CoCo trong 24 giờ. Tạo đơn hoặc đánh dấu đang giao **không đồng nghĩa đã nhận tiền**.
 
 ### 9. Ví ký gửi và rút tiền
 
-1. Khi nhân viên đánh dấu đơn **đã giao/nhận thành công** sau khi xác nhận đã thu tiền, hệ thống ghi có **một lần, cùng giao dịch với việc hoàn tất đơn** vào ví người bán: `giá hàng chốt − hoa hồng CoCo`; tiền giao hàng không tham gia phép tính. Đồng thời ghi hoa hồng của đơn vào **Ví hoa hồng CoCo** (`/Admin/Wallets/Platform`), sổ chung của sàn tách khỏi ví ký gửi cá nhân của từng admin. Mỗi đơn có tối đa một bút toán hoa hồng; migration điền bút toán cho đơn cũ đã thanh toán và hoàn tất. Đặt đơn hoặc chỉ xác nhận thanh toán **không ghi có ví**. Màn hình đối soát ví vẫn có thao tác ghi có thủ công cho **đơn cũ đã hoàn tất trước khi triển khai tính năng này**. Ví CoCo hiện theo dõi doanh thu hoa hồng; hệ thống chưa ghi nhận việc chuyển tiền mặt thực tế vào tài khoản ngân hàng của sàn.
+1. Khi nhân viên đánh dấu đơn **đã giao/nhận thành công** sau khi xác nhận đã thu tiền, hệ thống ghi có **một lần, cùng giao dịch với việc hoàn tất đơn** vào ví người bán: `giá hàng chốt − hoa hồng CoCo`; tiền giao hàng không tham gia phép tính. Đồng thời ghi hoa hồng của đơn vào **Ví hoa hồng CoCo** (`/Admin/Wallets/Platform`), sổ chung của sàn tách khỏi ví ký gửi cá nhân của từng admin. Mỗi đơn có tối đa một bút toán hoa hồng; migration điền bút toán cho đơn cũ đã thanh toán và hoàn tất. Đặt đơn hoặc chỉ xác nhận thanh toán **không ghi có ví**. Màn hình đối soát ví vẫn có thao tác ghi có thủ công cho **đơn cũ đã hoàn tất trước khi triển khai tính năng này**. Admin có thể ghi nhận rút hoa hồng trực tiếp từ ví CoCo, không cần người khác duyệt; số dư khả dụng giảm ngay, thông tin ngân hàng được lưu để điền sẵn cho lần sau và lịch sử rút được giữ lại. Ứng dụng **không tự chuyển khoản ngân hàng**: admin thực hiện chuyển tiền ngoài hệ thống.
 2. Người bán xem số dư khả dụng, tiền đang chờ rút và lịch sử giao dịch; gửi yêu cầu với **số tài khoản đầy đủ gồm 6–30 chữ số** và **tên ngân hàng**. Hệ thống giữ tiền khỏi số dư khả dụng ngay khi tạo yêu cầu và dùng mã yêu cầu để chống gửi lặp. Số tài khoản được lưu dạng chuỗi để giữ số 0 ở đầu; người bán và quản trị viên có quyền quản lý ví nhìn thấy đầy đủ trong lịch sử/yêu cầu.
 3. Quản trị viên **duyệt** yêu cầu, sau đó tự thực hiện chuyển khoản bên ngoài ứng dụng. Chỉ khi đã kiểm tra giao dịch thực tế, quản trị viên nhập **mã giao dịch ngân hàng** và bấm **Xác nhận đã chuyển tiền**. Lúc đó yêu cầu thành `Transferred`, lưu nhân viên/thời gian/mã giao dịch, ghi nhật ký và thông báo người bán. Bước xác nhận này **không trừ ví lần thứ hai**; số tiền đã được giữ từ lúc yêu cầu. Thao tác lặp với cùng mã giao dịch không tạo thêm bản ghi quyết toán.
 4. Quản trị viên có thể **từ chối yêu cầu `Pending` hoặc `Approved` chưa chuyển**, nêu lý do và hoàn đúng số tiền đã giữ về số dư khả dụng. Yêu cầu cũ chỉ lưu tài khoản đã che không thể chuyển; quản trị viên từ chối để người bán gửi lại với đầy đủ thông tin. Ứng dụng **không kết nối API ngân hàng**, trạng thái `Transferred` là xác nhận thủ công của nhân viên sau khi đối chiếu giao dịch thật.
@@ -201,13 +217,13 @@ flowchart LR
 | ListingReminderWorker | Nhắc người bán một lần khi bài `ACTIVE` cũ quá `Listings:ReminderAfterDays` (mặc định 30 ngày); không tự hạ giá |
 | OutboxDispatcherWorker | Xử lý hàng đợi email/web push khoảng mỗi 15 giây; có retry, gửi có thể lặp nên nhà cung cấp phải chống trùng |
 
-Mọi mốc thời gian được lưu UTC. Các thay đổi quan trọng dùng giao dịch và phiên bản dòng. **Không tác vụ nền nào tự đăng bán sản phẩm.** Hiện chưa có địa chỉ cửa hàng thật, tài khoản dịch vụ SMS OTP, Google/Apple, web push, cổng thanh toán hay chuyển khoản ngân hàng. Cấu hình SMTP là điều kiện để OTP email chạy ngoài Development. Những tích hợp này không được xem là đã hoàn thành chỉ vì đã có màn hình, trạng thái hoặc thông báo nội bộ.
+Mọi mốc thời gian được lưu UTC. Các thay đổi quan trọng dùng giao dịch và phiên bản dòng. **Không tác vụ nền nào tự đăng bán sản phẩm.** Địa chỉ nhận hàng tại CoCo đã được cấu hình theo thông tin cửa hàng cung cấp; cần kiểm tra lại địa chỉ trước khi vận hành thực tế. Hiện chưa có tài khoản dịch vụ SMS OTP, Google/Apple, web push, cổng thanh toán hay chuyển khoản ngân hàng. Cấu hình SMTP là điều kiện để OTP email hoạt động. Những tích hợp này không được xem là đã hoàn thành chỉ vì đã có màn hình, trạng thái hoặc thông báo nội bộ.
 
 ### Cấu hình liên quan đến các luồng
 
 - `Marketplace:MaximumOfferDiscountPercent` mặc định `25`, chỉ nhận `20–30`; `Marketplace:CommissionPercent` mặc định `15`, chỉ nhận `15–20`. Cấu hình ngoài khoảng hợp lệ sẽ khiến ứng dụng không khởi động.
 - `Shipping:InnerCityZones` chứa **cặp tỉnh/thành và phường/xã hiện hành**, ví dụ `[{ "Province": "<tỉnh/thành>", "Ward": "<phường/xã>" }]`. Dữ liệu này chỉ được seed vào bảng `ShippingZones` khi bảng trống. Sau đó quản lý các cột `Province`, `Ward`, `IsInnerCity`, `IsActive` trong SQL Server. Không tự suy đoán quận/huyện cũ là phường/xã mới.
-- Pickup cần `Shipping:StoreAddress` thật. `Shipping:StoreUtcOffsetHours`, `Shipping:OpeningHour`, `Shipping:ClosingHour` điều khiển lịch lấy; `Shipping:StoreMapUrl` là liên kết bản đồ HTTPS tùy chọn. `Orders:UnpaidReservationMinutes` mặc định `1440` (cho phép `15–10080`); `Listings:ReminderAfterDays` mặc định `30` (cho phép `7–365`).
+- Pickup dùng địa chỉ CoCo trong `Shipping:StoreAddress` ở `appsettings.json`; cần sửa giá trị này nếu cửa hàng chuyển địa điểm. `Shipping:StoreUtcOffsetHours`, `Shipping:OpeningHour`, `Shipping:ClosingHour` điều khiển lịch lấy; `Shipping:StoreMapUrl` là liên kết bản đồ HTTPS tùy chọn. `Orders:UnpaidReservationMinutes` mặc định `1440` (cho phép `15–10080`); `Listings:ReminderAfterDays` mặc định `30` (cho phép `7–365`).
 - Nếu nâng cấp database đã có dữ liệu, hãy sao lưu trước khi áp dụng migrations. `InspectorWorkflow` chuyển mã sản phẩm cũ của bài ký gửi thành mã ký gửi; `CheckoutOrders` giữ địa chỉ cũ trong `StreetAddress` và không tự biến quận/huyện thành phường/xã. `SkuGeneratedOnPublish` xóa SKU tạm đã cấp cho bài còn chờ hoặc bị từ chối; các món đã đăng bán/đặt/bán giữ nguyên SKU chính thức. Migration rút tiền `WithdrawalTransferConfirmation` thêm số tài khoản đầy đủ, tên ngân hàng, mã/thời gian/người xác nhận chuyển khoản và phiên bản dòng; không thể khôi phục số tài khoản đầy đủ từ yêu cầu cũ đã che.
 - Chat thời gian thực dùng JavaScript trình duyệt `@microsoft/signalr` 10.0.0 lưu tại `src/CoCoReTrade.Web/wwwroot/lib/signalr` cùng giấy phép MIT. Hub chạy tại `/hubs/conversations`; không cần migration mới hay npm khi chạy ứng dụng.
 
@@ -246,3 +262,7 @@ dotnet test CoCoReTrade.slnx
 ```
 
 Các bài kiểm tra hiện có bao phủ số ảnh tối thiểu, chuyển trạng thái đăng bán, quyền xem bài/ảnh chờ duyệt, phân quyền và hết hạn trả giá, giá mua ngay/giá thương lượng, vùng giao hàng, kiểm tra dữ liệu, chống gửi lặp, mua đồng thời, hủy/mở bán lại và hoàn tất đơn đã thanh toán. Hồ sơ, giỏ hàng, tin nhắn và hỗ trợ vẫn cần thêm bài kiểm tra riêng. Cần SQL Server thật để thử migration và toàn bộ ứng dụng; các bài kiểm tra đơn vị hiện có không cần cơ sở dữ liệu.
+
+## Ứng dụng điện thoại
+
+Mã Flutter nằm ở [`mobile/coco_retrade`](mobile/coco_retrade). Ứng dụng dùng chung SQL và quy tắc nghiệp vụ qua API của web; xem [hướng dẫn cài Flutter và chạy Android/iOS](mobile/coco_retrade/README.md). Các API bổ sung cho app gồm `/api/v1/mobile/account`, `/api/v1/mobile/profile` và `/api/v1/admin/reports/revenue`.

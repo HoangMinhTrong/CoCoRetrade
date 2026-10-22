@@ -1,7 +1,12 @@
 @model OrderDto
 @inject ShippingPolicy Shipping
 @{ ViewData["Title"] = "Đơn " + Model.ProductSku; var me = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-   var pickupAtStore = Model.PickupAtUtc.HasValue ? new DateTimeOffset(Model.PickupAtUtc.Value, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(Shipping.StoreUtcOffsetHours)).ToString("dd/MM/yyyy HH:mm") : null; }
+   var pickupAtStore = Model.PickupAtUtc.HasValue ? new DateTimeOffset(Model.PickupAtUtc.Value, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(Shipping.StoreUtcOffsetHours)).ToString("dd/MM/yyyy HH:mm") : null;
+   var events = Model.Timeline ?? Array.Empty<OrderTimelineEvent>();
+   var handedAt = events.FirstOrDefault(x => x.Action == "OrderPrepared")?.CreatedAtUtc;
+   var confirmedAt = events.FirstOrDefault(x => x.Action == "OrderConfirmed")?.CreatedAtUtc ?? handedAt;
+   Func<DateTime, string> localTime = value => new DateTimeOffset(DateTime.SpecifyKind(value, DateTimeKind.Utc))
+       .ToOffset(TimeSpan.FromHours(Shipping.StoreUtcOffsetHours)).ToString("dd/MM/yyyy HH:mm"); }
 <div class="mt-4"><a asp-action="Index">← Đơn hàng của tôi</a></div>
 <div class="row g-4 mt-1 mb-5"><div class="col-lg-7"><div class="panel">
     <div class="eyebrow">@Model.ProductSku</div><h1 class="page-title mt-2">@Model.ProductName</h1>
@@ -17,18 +22,27 @@
             @if (Model.PickupDeadlineAtUtc.HasValue) { <div class="alert alert-warning mt-3">Giá thỏa thuận áp dụng khi bạn đến nhận trước @(new DateTimeOffset(Model.PickupDeadlineAtUtc.Value, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(Shipping.StoreUtcOffsetHours)).ToString("dd/MM/yyyy HH:mm")) (giờ Việt Nam). Quá hạn chưa nhận và chưa thanh toán, đơn sẽ hủy và món đồ mở bán lại theo giá niêm yết.</div> }
         }
         else { <div class="spec-row"><span>Giao tới</span><strong>@Model.StreetAddress, @Model.Ward, @Model.Province</strong></div>
-            @if (Model.PreferredDeliveryWindow.HasValue) { <div class="spec-row"><span>Khung giờ thuận tiện</span><strong>@Model.PreferredDeliveryWindow</strong></div> }
             @if (!string.IsNullOrWhiteSpace(Model.DeliveryNote)) { <div class="spec-row"><span>Ghi chú giao hàng</span><strong>@Model.DeliveryNote</strong></div> }
         }
     }
+    @if (Model.Fulfillment == FulfillmentType.Shipping && !string.IsNullOrWhiteSpace(Model.TrackingCode))
+    { <div class="spec-row"><span>Mã vận chuyển</span><strong>@Model.TrackingCode</strong></div> }
     <div class="spec-row"><span>Tiền hàng</span><strong>@Model.MerchandisePrice.ToString("N0") VNĐ</strong></div>
+    @if (me == Model.SellerId)
+    { <div class="spec-row"><span>Tiền thực bạn nhận được (sau phí CoCo)</span><strong>@((Model.MerchandisePrice - Model.CommissionAmount).ToString("N0")) VNĐ</strong></div> }
     <div class="spec-row"><span>Phí giao</span><strong>@Model.ShippingFee.ToString("N0") VNĐ</strong></div>
     <div class="spec-row fs-5"><span>Tổng thanh toán</span><strong>@Model.TotalAmount.ToString("N0") VNĐ</strong></div>
     <div class="spec-row"><span>Phương thức thanh toán</span><strong>Tiền mặt khi nhận hàng</strong></div>
     <p class="small text-muted mt-3 mb-0">@(Model.Fulfillment == FulfillmentType.Shipping ? "Kiểm tra hàng khi người giao hàng đến; nếu nhận hàng, trả tiền mặt cho người giao hàng." : "Kiểm tra hàng và trả tiền mặt tại CoCo khi tới lấy.") Không cần chuyển khoản trước. CoCo cập nhật trạng thái thanh toán sau khi xác nhận đã thu tiền.</p>
 </div></div><div class="col-lg-5"><div class="panel"><h2 class="display-serif fs-4">Theo dõi</h2>
-    <p>Ngày đặt: @Model.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
-    @if (me == Model.BuyerId && Model.Status == OrderStatus.PendingProcessing && Model.PaymentStatus == PaymentStatus.Unpaid)
+    <ol class="offer-timeline order-timeline mt-3 mb-4">
+        <li><strong>Đã đặt đơn</strong><div class="small text-muted">@localTime(Model.CreatedAtUtc) (giờ Việt Nam)</div></li>
+        <li class="@(confirmedAt.HasValue ? "" : "is-pending")"><strong>CoCo xác nhận đơn</strong><div class="small text-muted">@(confirmedAt.HasValue ? localTime(confirmedAt.Value) + " (giờ Việt Nam)" : "Chưa cập nhật")</div></li>
+        <li class="@(handedAt.HasValue ? "" : "is-pending")"><strong>@(Model.Fulfillment == FulfillmentType.Shipping ? "CoCo bàn giao bên vận chuyển" : "Sẵn sàng nhận tại CoCo")</strong><div class="small text-muted">@(handedAt.HasValue ? localTime(handedAt.Value) + " (giờ Việt Nam)" : "Chưa cập nhật")</div></li>
+        <li class="@(Model.CompletedAtUtc.HasValue ? "" : "is-pending")"><strong>@(Model.Fulfillment == FulfillmentType.Shipping ? "Giao hàng thành công" : "Đã nhận hàng tại CoCo")</strong><div class="small text-muted">@(Model.CompletedAtUtc.HasValue ? localTime(Model.CompletedAtUtc.Value) + " (giờ Việt Nam)" : "Chưa cập nhật")</div></li>
+        @if (Model.CancelledAtUtc.HasValue) { <li class="is-cancelled"><strong>Đơn đã hủy</strong><div class="small text-muted">@localTime(Model.CancelledAtUtc.Value) (giờ Việt Nam)</div></li> }
+    </ol>
+    @if (me == Model.BuyerId && Model.Status == OrderStatus.PendingProcessing && Model.PaymentStatus == PaymentStatus.Unpaid && !confirmedAt.HasValue)
     { <form asp-action="Cancel" asp-route-id="@Model.Id" method="post"><button class="btn btn-outline-danger w-100">Hủy đơn trước khi xử lý</button></form> }
     @if (User.IsInRole("Admin")) { <a class="btn btn-outline-wine w-100" asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id">Mở quản lý đơn</a> }
 </div></div></div>

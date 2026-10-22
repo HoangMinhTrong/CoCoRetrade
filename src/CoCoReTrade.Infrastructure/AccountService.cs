@@ -40,7 +40,18 @@ public sealed class AccountService(UserManager<ApplicationUser> users, SignInMan
         if (user is null) return new(false, "Thông tin đăng nhập không đúng.");
         if (!user.EmailConfirmed) return new(false, "Tài khoản chưa được kích hoạt. Hãy dùng mã xác thực đã gửi đến email.");
         if (user.TrustSuspended) return new(false, "Tài khoản tạm khóa do điểm tín nhiệm thấp. Vui lòng liên hệ CoCo.");
-        var result = await signIn.PasswordSignInAsync(user, password, rememberMe, lockoutOnFailure: true);
+        var isAdmin = await users.IsInRoleAsync(user, "Admin");
+        if (isAdmin && await users.IsLockedOutAsync(user))
+        {
+            var unlocked = await users.SetLockoutEndDateAsync(user, null);
+            if (!unlocked.Succeeded) return new(false, "Không thể mở khóa tài khoản quản trị. Vui lòng thử lại.");
+        }
+        if (isAdmin && await users.GetAccessFailedCountAsync(user) > 0)
+        {
+            var reset = await users.ResetAccessFailedCountAsync(user);
+            if (!reset.Succeeded) return new(false, "Không thể cập nhật tài khoản quản trị. Vui lòng thử lại.");
+        }
+        var result = await signIn.PasswordSignInAsync(user, password, rememberMe, lockoutOnFailure: !isAdmin);
         if (result.IsLockedOut) return new(false, "Tài khoản tạm khóa do đăng nhập sai nhiều lần.");
         if (!result.Succeeded) return new(false, "Thông tin đăng nhập không đúng.");
         return new(true, UserId: user.Id);

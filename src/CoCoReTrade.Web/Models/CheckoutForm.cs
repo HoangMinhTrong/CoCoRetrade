@@ -23,11 +23,9 @@ public sealed class CheckoutForm
     public string? Ward { get; set; }
     [MaxLength(300, ErrorMessage = "Tối đa {1} ký tự."), Display(Name = "Số nhà, đường và địa chỉ cụ thể")]
     public string? StreetAddress { get; set; }
-    [Display(Name = "Khung giờ giao thuận tiện")]
-    public DeliveryWindow? PreferredDeliveryWindow { get; set; }
     [MaxLength(500, ErrorMessage = "Tối đa {1} ký tự."), Display(Name = "Ghi chú cho người giao")]
     public string? DeliveryNote { get; set; }
     public CheckoutRequest ToRequest() => new(ProductId, OfferId, IdempotencyKey,
         RecipientName, RecipientPhone, Fulfillment, PickupLocal, Province, Ward, StreetAddress,
-        PreferredDeliveryWindow, DeliveryNote);
+        null, DeliveryNote);
 }

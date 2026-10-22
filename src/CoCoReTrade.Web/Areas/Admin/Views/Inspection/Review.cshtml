@@ -4,15 +4,17 @@
     var p = detail.Product;
     var isOwnListing = p.SellerId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     var canInspect = !isOwnListing && User.HasClaim(StaffPermissions.ClaimType, StaffPermissions.Inspect);
+    var canPreliminary = canInspect && User.IsInRole("Admin") && User.HasClaim(StaffPermissions.ClaimType, StaffPermissions.Reject);
     var canPublish = User.HasClaim(StaffPermissions.ClaimType, StaffPermissions.Publish);
     var canReject = User.HasClaim(StaffPermissions.ClaimType, StaffPermissions.Reject);
     var passed = detail.CanPublish;
+    var preliminaryApproved = p.PreliminaryStatus == PreliminaryReviewStatus.Approved;
     ViewData["Title"] = "Kiểm định " + p.ConsignmentCode;
 }
 <a class="d-inline-flex align-items-center gap-2 mb-3 small" asp-action="Index">← Danh sách chờ duyệt</a>
 <header class="admin-page-header">
     <div><div class="eyebrow">Phiếu ký gửi <span class="admin-code">@p.ConsignmentCode</span></div><h1 class="page-title">@p.Name</h1><p class="subtitle mb-0">Người ký gửi: <strong>@detail.SellerName</strong> · Độ mới khai báo: @p.DeclaredCondition%</p></div>
-    <span class="admin-status @(passed ? "admin-status--success" : "admin-status--warning")">@(passed ? "Đạt kiểm định" : "Chờ kết quả kiểm định")</span>
+    <span class="admin-status @(preliminaryApproved ? "admin-status--success" : "admin-status--warning")">@(preliminaryApproved ? "Đã duyệt sơ bộ" : p.PreliminaryStatus == PreliminaryReviewStatus.ChangesRequested ? "Cần cập nhật" : "Chờ duyệt sơ bộ")</span>
 </header>
 <div class="row g-4 mb-5">
     <div class="col-lg-5">
@@ -23,7 +25,7 @@
                 {
                     <div class="col">
                         <img class="w-100 rounded" style="aspect-ratio:4/5;object-fit:cover" src="/images/@image" alt="Ảnh kiểm tra của @p.Name" loading="lazy" />
-                        @if (canInspect)
+                        @if (canInspect && preliminaryApproved)
                         {
                             <form asp-action="Cover" asp-route-id="@p.Id" method="post" class="mt-2"><input type="hidden" name="imageId" value="@image" /><input type="hidden" name="expectedRowVersion" value="@detail.RowVersion" /><button class="btn btn-outline-wine btn-sm w-100" type="submit">@(image == p.ImageIds[0] ? "✓ Ảnh bìa hiện tại" : "Chọn làm ảnh bìa")</button></form>
                         }
@@ -55,11 +57,40 @@
         {
             <div class="alert alert-warning" role="alert">Bạn là người đăng bán sản phẩm này nên không thể tự kiểm định. Hãy nhờ một kiểm định viên hoặc quản trị viên khác kiểm định hiện vật.</div>
         }
-        @if (canInspect)
+        @if (canPreliminary && !preliminaryApproved)
+        {
+            <section class="panel mb-3">
+                <div class="eyebrow">Bước 1 · Duyệt sơ bộ qua ảnh</div>
+                <h2 class="fs-4 mt-2">Xem ảnh, mẫu mã và kiểu dáng</h2>
+                <p class="small text-muted">Sản phẩm vẫn chưa xuất hiện trên sàn. Người ký gửi có thể sửa thông tin trước khi được duyệt sơ bộ.</p>
+                <form asp-action="Preliminary" asp-route-id="@p.Id" method="post" class="mb-3">
+                    <input type="hidden" name="ExpectedRowVersion" value="@detail.RowVersion" />
+                    <input type="hidden" name="decision" value="Approved" />
+                    <button type="submit" class="btn btn-wine">Duyệt sơ bộ</button>
+                </form>
+                <form asp-action="Preliminary" asp-route-id="@p.Id" method="post" class="mb-3">
+                    <input type="hidden" name="ExpectedRowVersion" value="@detail.RowVersion" />
+                    <input type="hidden" name="decision" value="ChangesRequested" />
+                    <label for="updateReason" class="form-label">Lý do cần cập nhật</label>
+                    <textarea id="updateReason" name="Reason" rows="2" required minlength="5" maxlength="1000" class="form-control"></textarea>
+                    <button type="submit" class="btn btn-outline-wine mt-2">Gửi yêu cầu cập nhật</button>
+                </form>
+                @if (canReject)
+                {
+                    <form asp-action="Reject" asp-route-id="@p.Id" method="post">
+                        <input type="hidden" name="ExpectedRowVersion" value="@detail.RowVersion" />
+                        <label for="preliminaryRejectReason" class="form-label">Lý do từ chối</label>
+                        <textarea id="preliminaryRejectReason" name="Reason" rows="2" required minlength="5" maxlength="1000" class="form-control"></textarea>
+                        <button type="submit" class="btn btn-outline-danger mt-2">Gửi từ chối</button>
+                    </form>
+                }
+            </section>
+        }
+        @if (canInspect && preliminaryApproved)
         {
             <form asp-action="Record" asp-route-id="@p.Id" method="post" enctype="multipart/form-data" class="panel mb-3">
                 <input asp-for="ProductId" type="hidden" /><input asp-for="ExpectedRowVersion" type="hidden" />
-                <div class="admin-section-heading"><div class="eyebrow">Bước 1 · Kiểm tra hiện vật</div><h2 class="fs-4 mt-2 mb-1">Ghi kết quả kiểm định</h2><p class="small text-muted mb-0">Cập nhật thông tin đúng với sản phẩm thực tế.</p></div>
+                <div class="admin-section-heading"><div class="eyebrow">Bước 2 · Kiểm tra hiện vật tại tiệm</div><h2 class="fs-4 mt-2 mb-1">Ghi kết quả kiểm định</h2><p class="small text-muted mb-0">Cập nhật thông tin đúng với sản phẩm thực tế.</p></div>
                 <div asp-validation-summary="All" class="text-danger" role="alert"></div>
                 <fieldset class="admin-form-section">
                     <legend class="fs-6 fw-semibold">Thông tin sản phẩm</legend>
@@ -81,7 +112,7 @@
                 <fieldset class="admin-form-section">
                     <legend class="fs-6 fw-semibold">Bổ sung thông tin <span class="small text-muted fw-normal">· Không bắt buộc</span></legend>
                     <div class="mb-3"><label asp-for="Notes" class="form-label">Ghi chú kiểm định <span class="fw-normal text-muted">(không bắt buộc)</span></label><textarea asp-for="Notes" rows="3" maxlength="2000" class="form-control" placeholder="Đặc điểm, vết sờn hoặc thông tin cần lưu ý..."></textarea><span asp-validation-for="Notes" class="small text-danger"></span></div>
-                    <div><label asp-for="InspectionImages" class="form-label">Ảnh kiểm định bổ sung</label><input asp-for="InspectionImages" type="file" accept="image/jpeg,image/png,image/webp" multiple class="form-control" /><small class="form-text">Tối đa 10 ảnh JPEG, PNG hoặc WebP; mỗi ảnh tối đa 5 MB.</small><span asp-validation-for="InspectionImages" class="small text-danger"></span></div>
+                    <div><label asp-for="InspectionImages" class="form-label">Ảnh kiểm định bổ sung</label><input asp-for="InspectionImages" type="file" accept="image/jpeg,image/png,image/webp" multiple class="form-control" data-preview="inspectionPhotoPreview" data-max-files="10" /><small class="form-text">Tối đa 10 ảnh JPEG, PNG hoặc WebP; mỗi ảnh tối đa 5 MB. Có thể chọn ảnh nhiều lần và xóa từng ảnh trước khi lưu.</small><div id="inspectionPhotoPreview" class="photo-preview"></div><span asp-validation-for="InspectionImages" class="small text-danger"></span></div>
                 </fieldset>
                 <div class="form-check mb-4"><input asp-for="Passed" class="form-check-input" /><label asp-for="Passed" class="form-check-label fw-semibold">Hiện vật đạt kiểm định</label></div>
                 <button class="btn btn-wine w-100" type="submit">Lưu kết quả kiểm định</button>
@@ -91,7 +122,7 @@
         {
             <form asp-action="Publish" asp-route-id="@p.Id" method="post" class="panel admin-publish-panel mb-3">
                 <input type="hidden" name="ExpectedRowVersion" value="@detail.RowVersion" />
-                <div class="eyebrow">Bước 2 · Đưa sản phẩm lên cửa hàng</div>
+                <div class="eyebrow">Duyệt chính thức · Đưa sản phẩm lên sàn</div>
                 <h2 class="fs-4 mt-2">Xác nhận đăng bán</h2>
                 <p class="small text-muted">CoCo sẽ cấp SKU chính thức và hiển thị sản phẩm cho khách mua sau khi bạn xác nhận.</p>
                 <div class="form-check mb-4"><input class="form-check-input" type="checkbox" name="PhysicalItemConfirmed" value="true" id="confirmItem" required /><label class="form-check-label" for="confirmItem">Tôi đã kiểm tra hiện vật và xác nhận thông tin đạt yêu cầu.</label></div>

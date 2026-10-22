@@ -20,9 +20,11 @@
             <div class="d-grid d-sm-flex gap-2">
                 @if (Shipping.CanPickup)
                 { <a asp-controller="Checkout" asp-action="Index" asp-route-productId="@Model.ProductId" asp-route-offerId="@Model.Id" asp-route-fulfillment="Pickup" class="btn btn-wine flex-fill">Tới CoCo lấy trong 24 giờ</a> }
+                else
+                { <button type="button" class="btn btn-outline-wine flex-fill" disabled aria-describedby="pickupUnavailable">Tới CoCo lấy trong 24 giờ</button> }
                 <a asp-controller="Checkout" asp-action="Index" asp-route-productId="@Model.ProductId" asp-route-offerId="@Model.Id" asp-route-fulfillment="Shipping" class="btn btn-outline-wine flex-fill">Giao hàng tận nơi</a>
             </div>
-            @if (!Shipping.CanPickup) { <p class="form-text mt-2">Nhận tại CoCo sẽ mở khi cửa hàng cấu hình địa chỉ nhận hàng.</p> }
+            @if (!Shipping.CanPickup) { <p id="pickupUnavailable" class="alert alert-warning mt-3">Chưa thể chọn nhận tại CoCo vì cửa hàng chưa cấu hình địa chỉ lấy hàng. Vui lòng chọn giao tận nơi hoặc thử lại sau.</p> }
             <p class="form-text mt-2">Nếu chọn lấy tại CoCo, hãy hẹn giờ và xác nhận đơn. CoCo sẽ tạm giữ món đồ, ẩn khỏi sàn cho đến giờ hẹn. Quá hạn chưa lấy và chưa thanh toán, đơn được hủy và món đồ mở bán lại theo giá niêm yết.</p>
         }
     }

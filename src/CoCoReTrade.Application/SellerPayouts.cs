@@ -47,7 +47,7 @@ public sealed class SellerPayoutService(IAdminWalletRepository repository,
         repository.AddNotification(new MarketplaceNotification
         {
             Id = Guid.NewGuid(), UserId = order.SellerId, OrderId = order.Id,
-            Category = "Orders", Message = $"CoCo đã ghi có {proceeds:N0} VNĐ vào ví từ đơn {order.ProductSku}.",
+            Category = "Orders", Message = $"CoCo đã ghi có {proceeds:N0} VNĐ vào ví từ đơn {order.ProductName}.",
             CreatedAtUtc = nowUtc
         });
         return wallet.Id;

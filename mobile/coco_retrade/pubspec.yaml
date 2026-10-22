@@ -1,0 +1,17 @@
+name: coco_retrade
+description: Ứng dụng di động CoCo ReTrade dùng chung ASP.NET Core API.
+publish_to: none
+version: 0.1.0+1
+environment:
+  sdk: '>=3.11.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_secure_storage: ^11.2.0
+  image_picker: ^1.2.4
+  flutter_svg: ^2.3.0
+  qr_flutter: ^4.1.0
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/coco-logo.svg

@@ -5,7 +5,11 @@ namespace CoCoReTrade.Infrastructure;
 
 public sealed class ShippingZoneRepository(AppDbContext db) : IShippingZoneRepository
 {
-    public Task<bool> IsInnerCityAsync(string province, string ward, CancellationToken ct) =>
-        db.ShippingZones.AsNoTracking().AnyAsync(x => x.Province == province && x.Ward == ward &&
-            x.IsActive && x.IsInnerCity, ct);
+    public async Task<bool> IsInnerCityAsync(string province, string ward, CancellationToken ct)
+    {
+        var configured = await db.ShippingZones.AsNoTracking()
+            .Where(x => x.Province == province && x.Ward == ward && x.IsActive)
+            .Select(x => (bool?)x.IsInnerCity).FirstOrDefaultAsync(ct);
+        return configured ?? CoCoReTrade.Domain.ShippingFeeRules.IsDaNang(province);
+    }
 }

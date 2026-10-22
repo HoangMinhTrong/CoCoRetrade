@@ -100,6 +100,29 @@ namespace CoCoReTrade.Infrastructure.Migrations
                     b.ToTable("Addresses", (string)null);
                 });
 
+            modelBuilder.Entity("CoCoReTrade.Domain.AdminPayoutAccount", b =>
+                {
+                    b.Property<string>("AdminId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("BankAccountNumber")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("BankName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("AdminId");
+
+                    b.ToTable("AdminPayoutAccounts", (string)null);
+                });
+
             modelBuilder.Entity("CoCoReTrade.Domain.AuditLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -593,6 +616,10 @@ namespace CoCoReTrade.Infrastructure.Migrations
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(18,0)");
 
+                    b.Property<string>("TrackingCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Ward")
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
@@ -691,6 +718,45 @@ namespace CoCoReTrade.Infrastructure.Migrations
                     b.ToTable("PlatformCommissionEntries", (string)null);
                 });
 
+            modelBuilder.Entity("CoCoReTrade.Domain.PlatformCommissionWithdrawal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AdminId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,0)");
+
+                    b.Property<string>("BankAccountNumber")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("BankName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("RequestKey")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("AdminId", "RequestKey")
+                        .IsUnique();
+
+                    b.ToTable("PlatformCommissionWithdrawals", (string)null);
+                });
+
             modelBuilder.Entity("CoCoReTrade.Domain.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -737,6 +803,18 @@ namespace CoCoReTrade.Infrastructure.Migrations
 
                     b.Property<decimal>("OriginalPrice")
                         .HasColumnType("decimal(18,0)");
+
+                    b.Property<string>("PreliminaryReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("PreliminaryReviewedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PreliminaryStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
 
                     b.Property<DateTime?>("PublishedAtUtc")
                         .HasColumnType("datetime2");
@@ -1337,6 +1415,15 @@ namespace CoCoReTrade.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("CoCoReTrade.Domain.AdminPayoutAccount", b =>
+                {
+                    b.HasOne("CoCoReTrade.Infrastructure.ApplicationUser", null)
+                        .WithOne()
+                        .HasForeignKey("CoCoReTrade.Domain.AdminPayoutAccount", "AdminId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CoCoReTrade.Domain.AuditLog", b =>
                 {
                     b.HasOne("CoCoReTrade.Infrastructure.ApplicationUser", null)
@@ -1537,6 +1624,15 @@ namespace CoCoReTrade.Infrastructure.Migrations
                     b.HasOne("CoCoReTrade.Domain.Order", null)
                         .WithMany()
                         .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CoCoReTrade.Domain.PlatformCommissionWithdrawal", b =>
+                {
+                    b.HasOne("CoCoReTrade.Infrastructure.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("AdminId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

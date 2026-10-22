@@ -11,9 +11,14 @@ namespace CoCoReTrade.Tests;
 
 public sealed class AdminModuleTests
 {
-    private static Product NewProduct(string code) => Product.Submit("seller", code, "Linen shirt", "Zara", "Shirts", "M",
-        500_000, 300_000, 95, true,
-        [new ProductImage("a.jpg", "image/jpeg", 0), new ProductImage("b.jpg", "image/jpeg", 1), new ProductImage("c.jpg", "image/jpeg", 2)]);
+    private static Product NewProduct(string code)
+    {
+        var product = Product.Submit("seller", code, "Linen shirt", "Zara", "Shirts", "M",
+            500_000, 300_000, 95, true,
+            [new ProductImage("a.jpg", "image/jpeg", 0), new ProductImage("b.jpg", "image/jpeg", 1), new ProductImage("c.jpg", "image/jpeg", 2)]);
+        product.ReviewPreliminarily("admin", PreliminaryReviewStatus.Approved, null, DateTime.UtcNow);
+        return product;
+    }
     private static InspectionSubmission Submission(string version, bool passed = true) =>
         new(passed, "Linen shirt", "Zara", "Shirts", "M", 500_000, 280_000, 92,
             "Physical item checked", version, []);
@@ -24,6 +29,28 @@ public sealed class AdminModuleTests
         var codes = new ProductCodeService(store, TimeProvider.System);
         return (new AdminProductService(store, permissions, new MemoryImages(), codes,
             new ProductLifecycleService(permissions), TimeProvider.System), store);
+    }
+
+    [Fact]
+    public async Task PreliminaryDecisionNotifiesSellerBeforePhysicalInspection()
+    {
+        var product = Product.Submit("seller", "CG-2026-000099", "Linen shirt", "", "Shirts", "M",
+            500_000, 300_000, 95, true,
+            [new ProductImage("a.jpg", "image/jpeg", 0), new ProductImage("b.jpg", "image/jpeg", 1), new ProductImage("c.jpg", "image/jpeg", 2)]);
+        var (service, store) = Setup(product);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.ReviewPreliminarilyAsync("inspector", product.Id,
+            PreliminaryReviewStatus.Approved, null, Convert.ToBase64String(product.RowVersion), default));
+        var requested = await service.ReviewPreliminarilyAsync("admin", product.Id,
+            PreliminaryReviewStatus.ChangesRequested, "Cần chụp rõ mặt trước.", Convert.ToBase64String(product.RowVersion), default);
+        Assert.Equal(PreliminaryReviewStatus.ChangesRequested, requested.Product.PreliminaryStatus);
+        Assert.Contains("Cần chụp rõ", Assert.Single(store.Notifications).Message);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.InspectAsync("inspector", product.Id,
+            Submission(requested.RowVersion), default));
+        var approved = await service.ReviewPreliminarilyAsync("admin", product.Id,
+            PreliminaryReviewStatus.Approved, null, requested.RowVersion, default);
+        Assert.Equal(PreliminaryReviewStatus.Approved, approved.Product.PreliminaryStatus);
+        Assert.Equal(2, store.Notifications.Count);
+        Assert.False(product.CanSellerEdit);
     }
 
     [Fact]
@@ -45,7 +72,7 @@ public sealed class AdminModuleTests
     {
         var product = NewProduct("CG-2026-000009");
         Assert.Throws<InvalidOperationException>(() => product.Publish("CC-2026-000009", DateTime.UtcNow));
-        Assert.Throws<InvalidOperationException>(() => product.Reject("Not acceptable"));
+        Assert.Throws<ArgumentException>(() => product.Reject("bad"));
         Assert.Throws<UnauthorizedAccessException>(() => product.RecordInspection("seller", true,
             product.Name, product.Brand, product.Category, product.Size, product.OriginalPrice,
             product.AskingPrice, 95, "Self inspection", [], DateTime.UtcNow));

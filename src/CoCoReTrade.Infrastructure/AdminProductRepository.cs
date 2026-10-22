@@ -28,7 +28,7 @@ public sealed class AdminProductRepository(AppDbContext db) : IAdminProductRepos
         return await query.OrderByDescending(x => x.Product.CreatedAtUtc).Take(200)
             .Select(x => new AdminProductItem(x.Product.Id, x.Product.ConsignmentCode, x.Product.Sku,
                 x.Product.Name, x.Product.Brand, x.SellerName, x.Product.Status,
-                x.Product.VerifiedCondition, x.Product.CreatedAtUtc)).ToListAsync(ct);
+                x.Product.VerifiedCondition, x.Product.CreatedAtUtc, x.Product.PreliminaryStatus)).ToListAsync(ct);
     }
     public async Task<AdminProductDashboard> DashboardAsync(CancellationToken ct)
     {

@@ -11,6 +11,7 @@ public sealed class AdminWalletTests
         var product = Product.Submit("seller", "CG-2026-000100", "Linen shirt", "Zara", "Shirts", "M",
             500_000, 300_000, 95, true,
             [new ProductImage("a.jpg", "image/jpeg", 0), new ProductImage("b.jpg", "image/jpeg", 1), new ProductImage("c.jpg", "image/jpeg", 2)]);
+        product.ReviewPreliminarily("admin", PreliminaryReviewStatus.Approved, null, now);
         product.RecordInspection("inspector", true, product.Name, product.Brand, product.Category,
             product.Size, product.OriginalPrice, product.AskingPrice, 95, "Physical item checked", [], now);
         product.Publish("CC-2026-000100", now);

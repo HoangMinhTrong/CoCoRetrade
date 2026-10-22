@@ -19,6 +19,7 @@ public interface ICartService
 {
     Task AddAsync(string userId, Guid productId, CancellationToken cancellationToken);
     Task RemoveAsync(string userId, Guid productId, CancellationToken cancellationToken);
+    Task<int> CountAsync(string userId, CancellationToken cancellationToken);
     Task<IReadOnlyList<ProductCard>> ItemsAsync(string userId, CancellationToken cancellationToken);
 }
 
@@ -65,6 +66,13 @@ public sealed class CartService(ICartRepository repository, IProductService prod
         await repository.PruneUnavailableAsync(userId, ct);
         var ids = await repository.ProductIdsAsync(userId, ct);
         return await products.ShopAsync(new ProductFilter(Ids: ids), ct);
+    }
+
+    public async Task<int> CountAsync(string userId, CancellationToken ct)
+    {
+        RequireUser(userId);
+        await repository.PruneUnavailableAsync(userId, ct);
+        return await repository.CountAsync(userId, ct);
     }
 
     private static void RequireUser(string userId)

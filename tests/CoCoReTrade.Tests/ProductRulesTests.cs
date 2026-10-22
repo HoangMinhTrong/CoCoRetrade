@@ -16,9 +16,45 @@ public sealed class ProductRulesTests
     }
 
     [Fact]
+    public void PreliminaryReviewRequiresReasonAndPhysicalInspectionWaitsForApproval()
+    {
+        var product = Pending();
+        Assert.Throws<InvalidOperationException>(() => product.RecordInspection("inspector-1", true,
+            product.Name, product.Brand, product.Category, product.Size, product.OriginalPrice,
+            product.AskingPrice, 95, null, [], DateTime.UtcNow));
+        Assert.Throws<ArgumentException>(() => product.ReviewPreliminarily("admin", PreliminaryReviewStatus.ChangesRequested,
+            "", DateTime.UtcNow));
+        product.ReviewPreliminarily("admin", PreliminaryReviewStatus.ChangesRequested, "Cần chụp rõ nhãn và đường may.", DateTime.UtcNow);
+        Assert.True(product.CanSellerEdit);
+        Assert.Equal(PreliminaryReviewStatus.ChangesRequested, product.PreliminaryStatus);
+        product.ReviewPreliminarily("admin", PreliminaryReviewStatus.Approved, null, DateTime.UtcNow);
+        Assert.False(product.CanSellerEdit);
+        Assert.Throws<InvalidOperationException>(() => product.EditBySeller("seller-1", product.Name, "", product.Category,
+            product.Size, product.OriginalPrice, product.AskingPrice, 95, true,
+            product.Images.Select(i => i.Id).ToList(), []));
+    }
+
+    [Fact]
+    public void SellerMayEditPhotosAndLeaveBrandEmptyBeforePreliminaryApproval()
+    {
+        var product = Pending();
+        var kept = product.Images.Skip(1).Select(i => i.Id).ToList();
+        product.EditBySeller("seller-1", "Áo linen cập nhật", "", product.Category, product.Size,
+            product.OriginalPrice, product.AskingPrice, 95, true, kept,
+            [new ProductImage("d.jpg", "image/jpeg", 0)]);
+        Assert.Empty(product.Brand);
+        Assert.Equal(3, product.Images.Count);
+        Assert.DoesNotContain(product.Images, i => i.StorageKey == "a.jpg");
+        Assert.Throws<UnauthorizedAccessException>(() => product.EditBySeller("buyer", product.Name, "", product.Category,
+            product.Size, product.OriginalPrice, product.AskingPrice, 95, true,
+            product.Images.Select(i => i.Id).ToList(), []));
+    }
+
+    [Fact]
     public void OnlyPendingProductsCanBePublished()
     {
         var product = Pending();
+        product.ReviewPreliminarily("admin", PreliminaryReviewStatus.Approved, null, DateTime.UtcNow);
         product.RecordInspection("inspector-1", true, "Áo linen", "Zara", "Áo", "M", 500_000, 280_000,
             90, "Đã kiểm tra", [], DateTime.UtcNow);
         product.Publish("CC-2026-000001", DateTime.UtcNow);
@@ -46,6 +82,7 @@ public sealed class ProductRulesTests
     public async Task InspectorCannotReadRejectedImages()
     {
         var product = Pending();
+        product.ReviewPreliminarily("admin", PreliminaryReviewStatus.Approved, null, DateTime.UtcNow);
         product.RecordInspection("inspector-1", false, product.Name, product.Brand, product.Category,
             product.Size, product.OriginalPrice, product.AskingPrice, 90, "Damaged fabric", [], DateTime.UtcNow);
         product.Reject("Damaged fabric");
@@ -58,6 +95,7 @@ public sealed class ProductRulesTests
     public async Task PublishedProductIsVisibleInPublicShop()
     {
         var product = Pending();
+        product.ReviewPreliminarily("admin", PreliminaryReviewStatus.Approved, null, DateTime.UtcNow);
         product.RecordInspection("inspector-1", true, "Áo linen", "Zara", "Áo", "M", 500_000, 300_000,
             95, "Đạt kiểm định", [], DateTime.UtcNow);
         product.Publish("CC-2026-000001", DateTime.UtcNow);

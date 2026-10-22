@@ -3,6 +3,7 @@
 .templateengine/
 **/bin/
 **/obj/
+**/artifacts/mobile-build/
 **/TestResults/
 **/PrivateUploads/
 **/appsettings.Development.json

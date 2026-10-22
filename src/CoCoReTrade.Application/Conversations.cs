@@ -101,7 +101,7 @@ public sealed class ConversationService(IConversationRepository repository, Time
             repository.AddNotification(new MarketplaceNotification
             {
                 Id = Guid.NewGuid(), UserId = actorId == conversation.BuyerId ? conversation.SellerId : conversation.BuyerId,
-                Category = "Messages", Message = $"Bạn có tin nhắn mới về {conversation.ProductSku}.",
+                Category = "Messages", Message = $"Bạn có tin nhắn mới về {conversation.ProductName}.",
                 ConversationId = conversation.Id, ProductId = conversation.ProductId, CreatedAtUtc = now
             });
             await repository.SaveAsync(ct);

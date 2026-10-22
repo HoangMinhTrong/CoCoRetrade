@@ -12,14 +12,22 @@
         <div class="product-gallery">
             @if (Model.ImageIds.Count > 0)
             {
-                <img id="product-main-image" class="detail-main-image" src="/images/@Model.ImageIds[0]" alt="@Model.Name" />
+                <div class="detail-image-stage">
+                    <img id="product-main-image" class="detail-main-image" src="/images/@Model.ImageIds[0]" alt="Ảnh 1 của @Model.Name" data-product-name="@Model.Name" />
+                    @if (Model.ImageIds.Count > 1)
+                    {
+                        <button type="button" class="gallery-arrow gallery-arrow--previous" data-gallery-step="-1" aria-label="Ảnh trước"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7" /></svg></button>
+                        <button type="button" class="gallery-arrow gallery-arrow--next" data-gallery-step="1" aria-label="Ảnh tiếp theo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg></button>
+                    }
+                    <button type="button" id="galleryZoom" class="gallery-zoom" aria-label="Phóng to ảnh sản phẩm" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5M7.5 10.5h6" /><path class="gallery-zoom-plus" d="M10.5 7.5v6" /></svg><span>Phóng to</span></button>
+                </div>
                 <div class="thumbs" aria-label="Ảnh sản phẩm">
                     @for (var i = 0; i < Model.ImageIds.Count; i++)
                     {
                         <button class="detail-thumbnail @(i == 0 ? "is-active" : "")" type="button" data-product-image="/images/@Model.ImageIds[i]" aria-label="Xem ảnh @(i + 1) của @Model.Name" aria-pressed="@(i == 0 ? "true" : "false")"><img src="/images/@Model.ImageIds[i]" alt="" loading="lazy" /></button>
                     }
                 </div>
-                <p class="small text-muted mt-2">Chọn ảnh nhỏ để xem rõ hơn từng chi tiết.</p>
+                <p class="small text-muted mt-2">Chọn ảnh nhỏ hoặc dùng mũi tên để chuyển ảnh. Bấm kính lúp rồi rê trên ảnh để xem chi tiết.</p>
             }
             else { <div class="detail-main-image product-placeholder"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#bag" /></svg></div> }
         </div>
@@ -53,7 +61,7 @@
                 @if (isAuthenticated)
                 {
                     <div class="row g-2 mt-1">
-                        <div class="col-6"><form asp-controller="Cart" asp-action="Add" method="post"><input type="hidden" name="productId" value="@Model.Id" /><button type="submit" class="btn btn-light w-100"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#bag" /></svg> Thêm vào giỏ</button></form></div>
+                        <div class="col-6"><form asp-controller="Cart" asp-action="Add" method="post" data-cart-add><input type="hidden" name="productId" value="@Model.Id" /><input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" /><button type="submit" class="btn btn-light w-100"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#bag" /></svg> Thêm vào giỏ</button></form></div>
                         <div class="col-6"><form asp-controller="Messages" asp-action="Start" method="post"><input type="hidden" name="productId" value="@Model.Id" /><button type="submit" class="btn btn-light w-100"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#message" /></svg> Nhắn người bán</button></form></div>
                     </div>
                 }
@@ -84,25 +92,58 @@
                 }
             </div>
         }
+        @if (isSeller && Model.Status == ProductStatus.PendingApproval)
+        {
+            <div class="panel mt-4">
+                <p class="small subtitle mb-2">@(Model.PreliminaryStatus == PreliminaryReviewStatus.Approved ? "Đã duyệt sơ bộ. Vui lòng mang món đồ đến CoCo để kiểm định trực tiếp." : Model.PreliminaryStatus == PreliminaryReviewStatus.ChangesRequested ? "CoCo yêu cầu cập nhật thông tin trước khi duyệt sơ bộ." : "Sản phẩm đang chờ duyệt sơ bộ qua ảnh.")</p>
+                @if (!string.IsNullOrWhiteSpace(Model.PreliminaryReason)) { <p class="text-danger small">@Model.PreliminaryReason</p> }
+                @if (Model.PreliminaryStatus != PreliminaryReviewStatus.Approved) { <a class="btn btn-outline-wine" asp-area="" asp-controller="Listing" asp-action="Edit" asp-route-id="@Model.Id">Sửa thông tin và ảnh</a> }
+            </div>
+        }
         @if (User.HasClaim(StaffPermissions.ClaimType, StaffPermissions.ReadPending) && Model.Status == ProductStatus.PendingApproval)
         {
-            <div class="panel mt-4"><p class="small subtitle mb-2">Sản phẩm đang chờ CoCo kiểm tra trực tiếp.</p><a class="btn btn-wine" asp-area="Admin" asp-controller="Inspection" asp-action="Review" asp-route-id="@Model.Id">Mở phiếu kiểm định <svg class="icon" aria-hidden="true"><use href="/images/icons.svg#arrow-right" /></svg></a></div>
+            <div class="panel mt-4"><p class="small subtitle mb-2">@(Model.PreliminaryStatus == PreliminaryReviewStatus.Approved ? "Chờ kiểm định hiện vật tại tiệm." : "Chờ duyệt sơ bộ qua ảnh.")</p><a class="btn btn-wine" asp-area="Admin" asp-controller="Inspection" asp-action="Review" asp-route-id="@Model.Id">Mở phiếu duyệt <svg class="icon" aria-hidden="true"><use href="/images/icons.svg#arrow-right" /></svg></a></div>
         }
     </div></div>
 </div>
 @section Scripts {
     <script>
-        document.querySelectorAll('[data-product-image]').forEach(button => {
-            button.addEventListener('click', () => {
-                const image = document.getElementById('product-main-image');
-                if (!image) return;
-                image.src = button.dataset.productImage;
-                document.querySelectorAll('[data-product-image]').forEach(item => {
-                    const active = item === button;
-                    item.classList.toggle('is-active', active);
-                    item.setAttribute('aria-pressed', String(active));
-                });
+        const thumbs = Array.from(document.querySelectorAll('[data-product-image]'));
+        const image = document.getElementById('product-main-image');
+        const stage = document.querySelector('.detail-image-stage');
+        const zoomButton = document.getElementById('galleryZoom');
+        let current = 0;
+        function setZoom(enabled) {
+            stage.classList.toggle('is-zoomed', enabled);
+            zoomButton.setAttribute('aria-pressed', String(enabled));
+            zoomButton.setAttribute('aria-label', enabled ? 'Thu nhỏ ảnh sản phẩm' : 'Phóng to ảnh sản phẩm');
+            zoomButton.querySelector('span').textContent = enabled ? 'Thu nhỏ' : 'Phóng to';
+            stage.style.setProperty('--zoom-x', '50%');
+            stage.style.setProperty('--zoom-y', '50%');
+        }
+        function showImage(index) {
+            if (!thumbs.length) return;
+            if (stage.classList.contains('is-zoomed')) setZoom(false);
+            current = (index + thumbs.length) % thumbs.length;
+            const src = thumbs[current].dataset.productImage;
+            image.src = src;
+            image.alt = `Ảnh ${current + 1} của ${image.dataset.productName}`;
+            thumbs.forEach((item, position) => {
+                const active = position === current;
+                item.classList.toggle('is-active', active);
+                item.setAttribute('aria-pressed', String(active));
             });
+        }
+        thumbs.forEach((button, index) => button.addEventListener('click', () => showImage(index)));
+        document.querySelectorAll('[data-gallery-step]').forEach(button =>
+            button.addEventListener('click', () => showImage(current + Number(button.dataset.galleryStep))));
+        zoomButton?.addEventListener('click', () => setZoom(!stage.classList.contains('is-zoomed')));
+        stage?.addEventListener('pointermove', event => {
+            if (!stage.classList.contains('is-zoomed') || event.target.closest('button')) return;
+            const bounds = stage.getBoundingClientRect();
+            stage.style.setProperty('--zoom-x', `${Math.max(0, Math.min(100, (event.clientX - bounds.left) / bounds.width * 100))}%`);
+            stage.style.setProperty('--zoom-y', `${Math.max(0, Math.min(100, (event.clientY - bounds.top) / bounds.height * 100))}%`);
         });
+        showImage(0);
     </script>
 }

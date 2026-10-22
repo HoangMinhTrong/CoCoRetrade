@@ -8,9 +8,30 @@
     <a class="btn btn-outline-wine" asp-action="Index">Về quản lý ví</a>
 </header>
 <div class="row g-3 mb-4">
-    <div class="col-sm-6"><div class="panel h-100"><div class="eyebrow">Tổng hoa hồng đã ghi nhận</div><strong class="wallet-stat-value">@Model.Balance.ToString("N0")</strong><span class="wallet-stat-unit">VNĐ</span></div></div>
-    <div class="col-sm-6"><div class="panel h-100"><div class="eyebrow">Đơn đã ghi nhận</div><strong class="wallet-stat-value">@Model.OrderCount.ToString("N0")</strong><span class="wallet-stat-unit">đơn hàng</span></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Có thể rút</div><strong class="wallet-stat-value">@Model.Balance.ToString("N0")</strong><span class="wallet-stat-unit">VNĐ</span></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Tổng hoa hồng</div><strong class="wallet-stat-value">@Model.TotalCommission.ToString("N0")</strong><span class="wallet-stat-unit">VNĐ</span></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Đã ghi nhận rút</div><strong class="wallet-stat-value">@Model.TotalWithdrawn.ToString("N0")</strong><span class="wallet-stat-unit">VNĐ</span></div></div>
+    <div class="col-sm-6 col-lg-3"><div class="panel h-100"><div class="eyebrow">Đơn đã ghi nhận</div><strong class="wallet-stat-value">@Model.OrderCount.ToString("N0")</strong><span class="wallet-stat-unit">đơn hàng</span></div></div>
 </div>
+<section class="panel mb-4">
+    <h2 class="fs-4 mb-2">Rút hoa hồng</h2>
+    <p class="small text-muted">Rút tiền sẽ trừ số dư ví CoCo ngay, không cần ai duyệt. CoCo chưa kết nối ngân hàng; bạn tự chuyển tiền ngoài hệ thống tới tài khoản đã nhập.</p>
+    <form asp-action="WithdrawPlatform" method="post" class="row g-3">
+        <input type="hidden" name="requestKey" value="@Guid.NewGuid()" />
+        <div class="col-md-6"><label for="platformAmount" class="form-label">Số tiền rút (VNĐ)</label><input id="platformAmount" name="amount" type="number" min="1" max="@Model.Balance.ToString("0", System.Globalization.CultureInfo.InvariantCulture)" step="1" required class="form-control" /></div>
+        <div class="col-md-6"><label for="platformBankName" class="form-label">Tên ngân hàng</label><input id="platformBankName" name="bankName" value="@Model.BankName" minlength="2" maxlength="100" required class="form-control" placeholder="Ví dụ: Vietcombank" /></div>
+        <div class="col-md-6"><label for="platformBankAccount" class="form-label">Số tài khoản ngân hàng</label><input id="platformBankAccount" name="bankAccountNumber" value="@Model.BankAccountNumber" inputmode="numeric" pattern="[0-9]{6,30}" minlength="6" maxlength="30" required autocomplete="off" class="form-control" placeholder="Nhập số tài khoản" /></div>
+        <div class="col-12"><button type="submit" class="btn btn-wine" disabled="@(Model.Balance <= 0 ? "disabled" : null)">Rút hoa hồng</button></div>
+    </form>
+</section>
+<section class="panel mb-4">
+    <h2 class="fs-4 mb-3">Lịch sử rút hoa hồng</h2>
+    @if (Model.RecentWithdrawals.Count == 0) { <p class="text-muted mb-0">Chưa có lần rút nào.</p> }
+    else { <div class="table-responsive"><table class="table admin-table align-middle mb-0"><thead><tr><th>Thời gian</th><th>Admin</th><th>Ngân hàng</th><th>Số tài khoản</th><th class="text-end">Số tiền</th></tr></thead><tbody>
+        @foreach (var withdrawal in Model.RecentWithdrawals)
+        { <tr><td>@withdrawal.CreatedAtUtc.AddHours(7).ToString("dd/MM/yyyy HH:mm")</td><td>@withdrawal.AdminName</td><td>@withdrawal.BankName</td><td>@withdrawal.BankAccountMasked</td><td class="text-end fw-semibold">@withdrawal.Amount.ToString("N0") VNĐ</td></tr> }
+    </tbody></table></div> }
+</section>
 <section class="panel mb-5">
     <h2 class="fs-4 mb-3">Hoa hồng theo đơn gần đây</h2>
     @if (Model.RecentEntries.Count == 0)

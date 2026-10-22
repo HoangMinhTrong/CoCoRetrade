@@ -19,10 +19,12 @@ public sealed class OrdersController(IAdminOrderService orders) : Controller
         var order = await orders.DetailsAsync(id, AdminId, ct);
         return order is null ? NotFound() : View(order);
     }
-    [HttpPost] public Task<IActionResult> Ready(Guid id, CancellationToken ct) =>
-        Change(id, () => orders.MarkReadyAsync(id, AdminId, ct));
-    [HttpPost] public Task<IActionResult> ConfirmPayment(Guid id, string reference, CancellationToken ct) =>
-        Change(id, () => orders.ConfirmPaymentAsync(id, AdminId, reference, ct));
+    [HttpPost] public Task<IActionResult> Ready(Guid id, string? trackingCode, CancellationToken ct) =>
+        Change(id, () => orders.MarkReadyAsync(id, AdminId, ct, trackingCode));
+    [HttpPost] public Task<IActionResult> Confirm(Guid id, CancellationToken ct) =>
+        Change(id, () => orders.ConfirmAsync(id, AdminId, ct));
+    [HttpPost] public Task<IActionResult> ConfirmPayment(Guid id, CancellationToken ct) =>
+        Change(id, () => orders.ConfirmPaymentAsync(id, AdminId, null, ct));
     [HttpPost] public Task<IActionResult> Complete(Guid id, CancellationToken ct) =>
         Change(id, () => orders.CompleteAsync(id, AdminId, ct));
     [HttpPost] public Task<IActionResult> Cancel(Guid id, CancellationToken ct) =>

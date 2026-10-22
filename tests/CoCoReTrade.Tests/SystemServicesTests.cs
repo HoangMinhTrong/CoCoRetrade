@@ -119,6 +119,7 @@ public sealed class SystemServicesTests
     {
         var product = Product.Submit("seller", "CG-2026-000100", "Linen shirt", "Zara", "Shirts", "M",
             500_000, 300_000, 95, true, [new("a", "image/jpeg", 0), new("b", "image/jpeg", 1), new("c", "image/jpeg", 2)]);
+        product.ReviewPreliminarily("admin", PreliminaryReviewStatus.Approved, null, Start.UtcDateTime);
         product.RecordInspection("inspector", true, product.Name, product.Brand, product.Category, product.Size,
             product.OriginalPrice, product.AskingPrice, 95, "Physical item checked", [], Start.UtcDateTime);
         product.Publish("CC-2026-000100", Start.UtcDateTime);
@@ -162,6 +163,7 @@ public sealed class SystemServicesTests
         public Task<Product?> ProductAsync(Guid id, CancellationToken ct) => throw new NotImplementedException();
         public Task<Offer?> OfferAsync(Guid id, CancellationToken ct) => throw new NotImplementedException();
         public Task<Order?> OrderAsync(Guid id, CancellationToken ct) => throw new NotImplementedException();
+        public Task<IReadOnlyList<OrderTimelineEvent>> TimelineAsync(Guid id, CancellationToken ct) => throw new NotImplementedException();
         public Task<Order?> ByIdempotencyAsync(string buyerId, Guid key, CancellationToken ct) => throw new NotImplementedException();
         public Task<IReadOnlyList<Order>> MineAsync(string userId, CancellationToken ct) => throw new NotImplementedException();
         public Task<IReadOnlyList<Order>> AdminQueueAsync(CancellationToken ct) => throw new NotImplementedException();
@@ -184,8 +186,9 @@ public sealed class SystemServicesTests
         public Task<OrderDto?> DetailsAsync(Guid id, string viewer, bool admin, CancellationToken ct) => throw new NotImplementedException();
         public Task<IReadOnlyList<OrderDto>> MineAsync(string user, CancellationToken ct) => throw new NotImplementedException();
         public Task<IReadOnlyList<OrderDto>> AdminQueueAsync(CancellationToken ct) => throw new NotImplementedException();
-        public Task<OrderDto> MarkReadyAsync(Guid id, string admin, CancellationToken ct) => throw new NotImplementedException();
-        public Task<OrderDto> ConfirmPaymentAsync(Guid id, string admin, string reference, CancellationToken ct) => throw new NotImplementedException();
+        public Task<OrderDto> MarkReadyAsync(Guid id, string admin, CancellationToken ct, string? trackingCode = null) => throw new NotImplementedException();
+        public Task<OrderDto> ConfirmAsync(Guid id, string admin, CancellationToken ct) => throw new NotImplementedException();
+        public Task<OrderDto> ConfirmPaymentAsync(Guid id, string admin, string? reference, CancellationToken ct) => throw new NotImplementedException();
         public Task<OrderDto> CompleteAsync(Guid id, string admin, CancellationToken ct) => throw new NotImplementedException();
     }
     private sealed class Permissions : IStaffPermissionChecker

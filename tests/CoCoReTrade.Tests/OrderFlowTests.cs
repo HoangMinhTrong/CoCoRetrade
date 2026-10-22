@@ -14,7 +14,7 @@ public sealed class OrderFlowTests
         var product = Product.Submit(Seller, "CC-2026-000300", "Áo khoác denim", "Zara", "Áo", "M",
             500_000, 300_000, 95, true,
             [new ProductImage("a.jpg", "image/jpeg", 0), new ProductImage("b.jpg", "image/jpeg", 1), new ProductImage("c.jpg", "image/jpeg", 2)]);
-        if (active) { product.RecordInspection("inspector-1", true, product.Name, product.Brand, product.Category, product.Size, product.OriginalPrice, product.AskingPrice, 95, "Physical item checked", [], Start.UtcDateTime); product.Publish("CC-2026-000300", Start.UtcDateTime); }
+        if (active) { product.ReviewPreliminarily("admin-1", PreliminaryReviewStatus.Approved, null, Start.UtcDateTime); product.RecordInspection("inspector-1", true, product.Name, product.Brand, product.Category, product.Size, product.OriginalPrice, product.AskingPrice, 95, "Physical item checked", [], Start.UtcDateTime); product.Publish("CC-2026-000300", Start.UtcDateTime); }
         var store = new MemoryOrders(product);
         var clock = new ManualClock(Start);
         var service = new OrderService(store, new MarketplacePolicy(25, 15),
@@ -48,6 +48,11 @@ public sealed class OrderFlowTests
         Assert.Equal(ProductStatus.Reserved, product.Status);
         Assert.Single(store.Orders);
         Assert.Equal(3, store.Notifications.Count);
+        Assert.All(store.Notifications, notification =>
+        {
+            Assert.Contains(product.Name, notification.Message);
+            Assert.DoesNotContain(product.Sku, notification.Message);
+        });
         Assert.Contains(store.Audits, x => x.Action == "OrderPlaced" && x.ActorId == Buyer);
     }
 
@@ -191,6 +196,34 @@ public sealed class OrderFlowTests
     }
 
     [Fact]
+    public async Task PaymentCanBeConfirmedWithoutAReceiptCode()
+    {
+        var (product, service, _, _) = Setup();
+        var placed = await service.PlaceAsync(Pickup(product.Id), Buyer, default);
+        await service.MarkReadyAsync(placed.Id, Admin, default);
+        var paid = await service.ConfirmPaymentAsync(placed.Id, Admin, null, default);
+        Assert.Equal(PaymentStatus.Paid, paid.PaymentStatus);
+        Assert.Null(paid.PaymentReference);
+    }
+
+    [Fact]
+    public async Task ShippingCanBeHandedOffDirectlyWithTrackingCode()
+    {
+        var (product, service, store, _) = Setup();
+        var placed = await service.PlaceAsync(Delivery(product.Id), Buyer, default);
+        var handedOff = await service.MarkReadyAsync(placed.Id, Admin, default, "SHIP-789012");
+        Assert.Equal(OrderStatus.Shipping, handedOff.Status);
+        Assert.Equal("SHIP-789012", handedOff.TrackingCode);
+        Assert.Contains(store.Notifications, x => x.UserId == Buyer && x.Message.Contains("SHIP-789012"));
+        Assert.Contains(store.Notifications, x => x.UserId == Seller && x.Message.Contains("SHIP-789012"));
+        var timeline = (await service.DetailsAsync(placed.Id, Buyer, false, default))!.Timeline!;
+        Assert.Single(timeline, x => x.Action == "OrderConfirmed");
+        Assert.Single(timeline, x => x.Action == "OrderPrepared");
+        var paid = await service.ConfirmPaymentAsync(placed.Id, Admin, null, default);
+        Assert.Equal(PaymentStatus.Paid, paid.PaymentStatus);
+    }
+
+    [Fact]
     public async Task SellerSeesOrderStatusWithoutBuyerContactDetails()
     {
         var (product, service, _, _) = Setup();
@@ -203,6 +236,32 @@ public sealed class OrderFlowTests
         Assert.Equal(Guid.Empty, sellerView.IdempotencyKey);
         Assert.Null(await service.DetailsAsync(placed.Id, "outsider", false, default));
         Assert.Equal("12 Main Street", (await service.DetailsAsync(placed.Id, Buyer, false, default))!.StreetAddress);
+    }
+
+    [Fact]
+    public async Task ConfirmationAndCarrierHandoffHaveSeparateTimelineTimes()
+    {
+        var (product, service, _, clock) = Setup();
+        var placed = await service.PlaceAsync(Delivery(product.Id), Buyer, default);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.ConfirmAsync(placed.Id, Buyer, default));
+
+        clock.Advance(TimeSpan.FromMinutes(10));
+        await service.ConfirmAsync(placed.Id, Admin, default);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ConfirmAsync(placed.Id, Admin, default));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CancelAsync(placed.Id, Buyer, false, default));
+        clock.Advance(TimeSpan.FromMinutes(20));
+        await Assert.ThrowsAsync<ArgumentException>(() => service.MarkReadyAsync(placed.Id, Admin, default));
+        await service.MarkReadyAsync(placed.Id, Admin, default, "SHIP-123456");
+
+        var buyerView = (await service.DetailsAsync(placed.Id, Buyer, false, default))!;
+        var sellerView = (await service.DetailsAsync(placed.Id, Seller, false, default))!;
+        Assert.Equal("SHIP-123456", buyerView.TrackingCode);
+        Assert.Equal("SHIP-123456", sellerView.TrackingCode);
+        var timeline = buyerView.Timeline!;
+        Assert.Equal(Start.AddMinutes(10).UtcDateTime,
+            Assert.Single(timeline, x => x.Action == "OrderConfirmed").CreatedAtUtc);
+        Assert.Equal(Start.AddMinutes(30).UtcDateTime,
+            Assert.Single(timeline, x => x.Action == "OrderPrepared").CreatedAtUtc);
     }
 
     [Fact]
@@ -242,6 +301,9 @@ public sealed class OrderFlowTests
         public Task<Product?> ProductAsync(Guid id, CancellationToken ct) => Task.FromResult<Product?>(id == product.Id ? product : null);
         public Task<Offer?> OfferAsync(Guid id, CancellationToken ct) => Task.FromResult<Offer?>(Offers.FirstOrDefault(x => x.Id == id));
         public Task<Order?> OrderAsync(Guid id, CancellationToken ct) => Task.FromResult<Order?>(Orders.FirstOrDefault(x => x.Id == id));
+        public Task<IReadOnlyList<OrderTimelineEvent>> TimelineAsync(Guid id, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<OrderTimelineEvent>>(Audits.Where(x => x.EntityType == "Order" && x.EntityId == id.ToString())
+                .Select(x => new OrderTimelineEvent(x.Action, x.CreatedAtUtc)).ToList());
         public Task<Order?> ByIdempotencyAsync(string buyerId, Guid key, CancellationToken ct) =>
             Task.FromResult<Order?>(Orders.FirstOrDefault(x => x.BuyerId == buyerId && x.IdempotencyKey == key));
         public Task<IReadOnlyList<Order>> MineAsync(string userId, CancellationToken ct) =>

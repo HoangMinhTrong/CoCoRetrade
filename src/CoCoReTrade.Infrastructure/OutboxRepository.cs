@@ -21,14 +21,16 @@ public sealed class OutboxRepository(AppDbContext db) : IOutboxRepository
                     .SetProperty(x => x.LeaseUntilUtc, nowUtc.AddMinutes(5))
                     .SetProperty(x => x.AttemptCount, x => x.AttemptCount + 1), ct);
             if (changed != 1) continue;
-            return await (from outbox in db.OutboxMessages.AsNoTracking()
+            var delivery = await (from outbox in db.OutboxMessages.AsNoTracking()
                           join notification in db.MarketplaceNotifications.AsNoTracking()
                               on outbox.NotificationId equals notification.Id
                           join user in db.Users.AsNoTracking() on notification.UserId equals user.Id
                           where outbox.Id == id
-                          select new OutboxDelivery(outbox.Id, token, outbox.Channel, notification.UserId,
-                              user.Email, notification.Category, notification.Message, outbox.AttemptCount))
+                          select new { outbox.Channel, outbox.AttemptCount, Notification = notification, user.Email })
                 .SingleAsync(ct);
+            await NotificationProductNames.ApplyAsync(db, [delivery.Notification], ct);
+            return new OutboxDelivery(id, token, delivery.Channel, delivery.Notification.UserId,
+                delivery.Email, delivery.Notification.Category, delivery.Notification.Message, delivery.AttemptCount);
         }
         return null;
     }

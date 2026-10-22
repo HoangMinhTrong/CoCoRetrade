@@ -8,8 +8,8 @@
             <section class="panel mb-4" aria-labelledby="photos-title">
                 <div class="form-section-heading"><span class="step-number">1</span><div><h2 id="photos-title" class="h5 mb-1">Ảnh thật của món đồ</h2><p class="small subtitle mb-0">Ảnh rõ giúp CoCo kiểm định và người mua dễ lựa chọn.</p></div></div>
                 <div class="upload-panel mt-4">
-                    <label asp-for="Images" class="form-label"></label><input asp-for="Images" class="form-control" type="file" accept="image/jpeg,image/png,image/webp" multiple required data-preview="photoPreview" aria-describedby="images-help" /><span asp-validation-for="Images" class="text-danger small"></span>
-                    <div id="images-help" class="form-text mt-2">Chọn từ 3 đến 10 ảnh: mặt trước, tem thương hiệu và cận cảnh tình trạng. JPG, PNG hoặc WebP, tối đa 5 MB mỗi ảnh.</div><div id="photoPreview" class="photo-preview"></div>
+                    <label asp-for="Images" class="form-label"></label><input asp-for="Images" class="form-control" type="file" accept="image/jpeg,image/png,image/webp" multiple required data-preview="photoPreview" data-max-files="10" aria-describedby="images-help" /><span asp-validation-for="Images" class="text-danger small"></span>
+                    <div id="images-help" class="form-text mt-2">Chọn từ 3 đến 10 ảnh. Có thể chọn thêm nhiều lần và xóa từng ảnh bằng dấu ×. JPG, PNG hoặc WebP, tối đa 5 MB mỗi ảnh.</div><div id="photoPreview" class="photo-preview"></div>
                 </div>
             </section>
             <section class="panel mb-4" aria-labelledby="product-info-title">
@@ -31,7 +31,7 @@
                     <div class="col-12"><div class="form-check form-switch mt-2"><input asp-for="AllowOffers" class="form-check-input" /><label asp-for="AllowOffers" class="form-check-label">Cho phép người mua đề xuất giá</label></div><p class="small subtitle mt-1 mb-0">Bạn có thể chấp nhận, từ chối hoặc đề xuất lại sau khi sản phẩm được duyệt.</p></div>
                 </div>
             </section>
-            <div class="listing-submit panel"><p class="small subtitle mb-3">Sau khi gửi, bạn nhận được mã chờ duyệt để theo dõi trong tủ đồ. Sản phẩm được đăng bán sau khi CoCo kiểm định và xác nhận.</p><button type="submit" class="btn btn-wine w-100">Gửi kiểm định và nhận mã chờ duyệt <svg class="icon" aria-hidden="true"><use href="/images/icons.svg#arrow-right" /></svg></button></div>
+            <div class="listing-submit panel"><p class="small subtitle mb-3">CoCo sẽ duyệt sơ bộ qua ảnh, sau đó kiểm định món đồ trực tiếp tại tiệm trước khi đăng bán. Bạn có thể sửa thông tin cho đến khi được duyệt sơ bộ.</p><button type="submit" class="btn btn-wine w-100">Gửi duyệt sơ bộ <svg class="icon" aria-hidden="true"><use href="/images/icons.svg#arrow-right" /></svg></button></div>
         </form>
     </div>
     <aside class="col-lg-4"><div class="panel listing-guide">

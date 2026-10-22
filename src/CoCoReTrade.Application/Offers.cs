@@ -69,7 +69,7 @@ public sealed class OfferService(IOfferRepository repository, MarketplacePolicy 
             var now = clock.GetUtcNow().UtcDateTime;
             var offer = Offer.Create(product, buyerId, price, policy.MinimumOffer(product.AskingPrice), used, now);
             await repository.AddOfferAsync(offer, ct);
-            Notify(product.SellerId, offer.Id, $"Có giá đề xuất {price:N0} VNĐ cho {product.Sku}.", now);
+            Notify(product.SellerId, offer.Id, $"Có giá đề xuất {price:N0} VNĐ cho {product.Name}.", now);
             await repository.SaveAsync(ct);
             return ToDto(offer, used + 1, now);
         }, ct);
@@ -96,9 +96,9 @@ public sealed class OfferService(IOfferRepository repository, MarketplacePolicy 
             repository.AddEvent(offer.Events[^1]);
             var message = action switch
             {
-                OfferResponse.Accept => $"Giá {offer.AcceptedPrice:N0} VNĐ cho {offer.ProductSku} đã được chấp nhận. Có hiệu lực 24 giờ.",
-                OfferResponse.Decline => $"Đề xuất cho {offer.ProductSku} đã bị từ chối.",
-                _ => $"Có giá đề xuất lại {offer.CurrentPrice:N0} VNĐ cho {offer.ProductSku}."
+                OfferResponse.Accept => $"Giá {offer.AcceptedPrice:N0} VNĐ cho {offer.ProductName} đã được chấp nhận. Có hiệu lực 24 giờ.",
+                OfferResponse.Decline => $"Đề xuất cho {offer.ProductName} đã bị từ chối.",
+                _ => $"Có giá đề xuất lại {offer.CurrentPrice:N0} VNĐ cho {offer.ProductName}."
             };
             Notify(other, offer.Id, message, now);
             await repository.SaveAsync(ct);
@@ -163,7 +163,7 @@ public sealed class OfferExpirationService(IOfferRepository repository, TimeProv
                     repository.AddNotification(new MarketplaceNotification
                     {
                         Id = Guid.NewGuid(), UserId = userId, OfferId = offer.Id,
-                        Category = "offers", Message = $"Đề xuất cho {offer.ProductSku} đã hết hạn.", CreatedAtUtc = now
+                        Category = "offers", Message = $"Đề xuất cho {offer.ProductName} đã hết hạn.", CreatedAtUtc = now
                     });
                 await repository.SaveAsync(ct);
                 return true;

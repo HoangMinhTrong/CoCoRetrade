@@ -29,6 +29,16 @@ public sealed class OrderRepository(AppDbContext db) : IOrderRepository, IAccept
         db.Offers.FirstOrDefaultAsync(x => x.Id == id, ct);
     public Task<Order?> OrderAsync(Guid id, CancellationToken ct) =>
         db.Orders.FirstOrDefaultAsync(x => x.Id == id, ct);
+    public async Task<IReadOnlyList<OrderTimelineEvent>> TimelineAsync(Guid id, CancellationToken ct)
+    {
+        var orderId = id.ToString();
+        return await db.AuditLogs.AsNoTracking()
+            .Where(x => x.EntityType == "Order" && x.EntityId == orderId &&
+                (x.Action == "OrderConfirmed" || x.Action == "OrderPrepared"))
+            .OrderBy(x => x.CreatedAtUtc)
+            .Select(x => new OrderTimelineEvent(x.Action, x.CreatedAtUtc))
+            .ToListAsync(ct);
+    }
     public Task<Order?> ByIdempotencyAsync(string buyerId, Guid key, CancellationToken ct) =>
         db.Orders.AsNoTracking().FirstOrDefaultAsync(x => x.BuyerId == buyerId && x.IdempotencyKey == key, ct);
     public async Task<IReadOnlyList<Order>> MineAsync(string userId, CancellationToken ct) =>

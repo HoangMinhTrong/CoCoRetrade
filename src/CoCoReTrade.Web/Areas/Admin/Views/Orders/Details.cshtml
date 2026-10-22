@@ -13,8 +13,8 @@
         @if (Model.PickupDeadlineAtUtc.HasValue) { <div class="alert alert-warning mt-3">Đơn dùng giá thỏa thuận: phải nhận trước @(new DateTimeOffset(Model.PickupDeadlineAtUtc.Value, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(Shipping.StoreUtcOffsetHours)).ToString("dd/MM/yyyy HH:mm")) (giờ Việt Nam). Nếu không đến và chưa thanh toán, hệ thống hủy đơn và mở bán lại theo giá gốc.</div> }
     }
     else { <div class="spec-row"><span>Giao tới</span><strong>@Model.StreetAddress, @Model.Ward, @Model.Province</strong></div>
-        @if (Model.PreferredDeliveryWindow.HasValue) { <div class="spec-row"><span>Khung giờ thuận tiện</span><strong>@Model.PreferredDeliveryWindow</strong></div> }
         @if (!string.IsNullOrWhiteSpace(Model.DeliveryNote)) { <div class="spec-row"><span>Ghi chú cho người giao</span><strong>@Model.DeliveryNote</strong></div> }
+        @if (!string.IsNullOrWhiteSpace(Model.TrackingCode)) { <div class="spec-row"><span>Mã vận chuyển</span><strong>@Model.TrackingCode</strong></div> }
     }
     <div class="spec-row"><span>Tiền hàng</span><strong>@Model.MerchandisePrice.ToString("N0") VNĐ</strong></div>
     <div class="spec-row"><span>Phí giao</span><strong>@Model.ShippingFee.ToString("N0") VNĐ</strong></div>
@@ -22,9 +22,17 @@
     <div class="spec-row"><span>Hoa hồng CoCo</span><strong>@Model.CommissionAmount.ToString("N0") VNĐ</strong></div>
     <p class="small text-muted mt-3 mb-0">Đơn mới chưa được coi là đã thanh toán. Chỉ xác nhận thanh toán khi CoCo thực sự nhận tiền, sau đó đánh dấu giao/nhận thành công. Tiền hàng trừ hoa hồng sẽ được ghi có vào ví người ký gửi cùng lúc hoàn tất đơn.</p>
 </div></div><div class="col-lg-5"><div class="panel"><h2 class="display-serif fs-4">Xử lý đơn</h2>
-    @if (Model.Status == OrderStatus.PendingProcessing) { <form asp-action="Ready" asp-route-id="@Model.Id" method="post" class="mb-2"><button class="btn btn-wine w-100">@(Model.Fulfillment == FulfillmentType.Pickup ? "Sẵn sàng tại cửa hàng" : "Bàn giao vận chuyển")</button></form> }
+    @if (Model.Fulfillment == FulfillmentType.Pickup && Model.Status == OrderStatus.PendingProcessing && !(Model.Timeline?.Any(x => x.Action == "OrderConfirmed") ?? false))
+    { <form asp-action="Confirm" asp-route-id="@Model.Id" method="post" class="mb-2"><button class="btn btn-wine w-100">Xác nhận đơn hàng</button></form> }
+    @if (Model.Status == OrderStatus.PendingProcessing &&
+        (Model.Fulfillment == FulfillmentType.Shipping || (Model.Timeline?.Any(x => x.Action == "OrderConfirmed") ?? false)))
+    { <form asp-action="Ready" asp-route-id="@Model.Id" method="post" class="mb-2">
+        @if (Model.Fulfillment == FulfillmentType.Shipping)
+        { <label class="form-label" for="trackingCode">Mã vận chuyển</label><input class="form-control mb-2" id="trackingCode" name="trackingCode" required minlength="4" maxlength="100" autocomplete="off" /> }
+        <button class="btn btn-wine w-100">@(Model.Fulfillment == FulfillmentType.Pickup ? "Sẵn sàng tại cửa hàng" : "Đã bàn giao vận chuyển")</button>
+    </form> }
     @if (Model.PaymentStatus == PaymentStatus.Unpaid && Model.Status is OrderStatus.ReadyForPickup or OrderStatus.Shipping)
-    { <form asp-action="ConfirmPayment" asp-route-id="@Model.Id" method="post" class="mb-3"><label class="form-label" for="reference">Mã biên nhận / giao dịch thực tế</label><input class="form-control mb-2" id="reference" name="reference" required minlength="4" maxlength="100" /><button class="btn btn-outline-wine w-100">Xác nhận đã nhận tiền</button></form> }
+    { <form asp-action="ConfirmPayment" asp-route-id="@Model.Id" method="post" class="mb-3"><button class="btn btn-outline-wine w-100">Xác nhận đã nhận tiền</button></form> }
     @if (Model.PaymentStatus == PaymentStatus.Paid && Model.Status is OrderStatus.ReadyForPickup or OrderStatus.Shipping)
     { <form asp-action="Complete" asp-route-id="@Model.Id" method="post" class="mb-2"><button class="btn btn-wine w-100">@(Model.Fulfillment == FulfillmentType.Pickup ? "Khách đã nhận tại CoCo · hoàn tất & ghi có ví" : "Giao hàng thành công · hoàn tất & ghi có ví")</button></form> }
     @if (Model.PaymentStatus == PaymentStatus.Unpaid && Model.Status is OrderStatus.PendingProcessing or OrderStatus.ReadyForPickup)

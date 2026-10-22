@@ -39,7 +39,8 @@ public sealed class ShippingPolicy
         if (fulfillment != FulfillmentType.Shipping) throw new ArgumentOutOfRangeException(nameof(fulfillment));
         if (string.IsNullOrWhiteSpace(province) || string.IsNullOrWhiteSpace(ward))
             throw new ArgumentException("Cần nhập tỉnh/thành và phường/xã.");
-        return ShippingFeeRules.Calculate(fulfillment, innerZones.Contains(Key(province, ward)));
+        return ShippingFeeRules.Calculate(fulfillment,
+            innerZones.Contains(Key(province, ward)) || ShippingFeeRules.IsDaNang(province));
     }
     public DateTime ParsePickupUtc(string? localTime, DateTime nowUtc)
     {
@@ -77,6 +78,7 @@ public sealed record CheckoutRequest(Guid ProductId, Guid? OfferId, Guid Idempot
 public sealed record CheckoutQuote(Guid ProductId, Guid? OfferId, string ProductSku, string ProductName,
     string ProductSize, decimal MerchandisePrice, decimal ShippingFee, decimal TotalAmount,
     decimal CommissionAmount, DateTime? OfferExpiresAtUtc, bool ShippingFeePending = false);
+public sealed record OrderTimelineEvent(string Action, DateTime CreatedAtUtc);
 public sealed record OrderDto(Guid Id, Guid ProductId, Guid? OfferId, string ProductSku, string ProductName,
     string ProductSize, string BuyerId, string SellerId, Guid IdempotencyKey, FulfillmentType Fulfillment,
     string RecipientName, string RecipientPhone, string? Province, string? Ward, string? StreetAddress,
@@ -84,7 +86,9 @@ public sealed record OrderDto(Guid Id, Guid ProductId, Guid? OfferId, string Pro
     decimal CommissionAmount, OrderStatus Status, PaymentStatus PaymentStatus, string? PaymentReference,
     DateTime CreatedAtUtc, DateTime? PaidAtUtc, DateTime? CancelledAtUtc, DateTime? CompletedAtUtc,
     DeliveryWindow? PreferredDeliveryWindow = null, string? DeliveryNote = null,
-    DateTime? PickupDeadlineAtUtc = null);
+    DateTime? PickupDeadlineAtUtc = null,
+    IReadOnlyList<OrderTimelineEvent>? Timeline = null,
+    string? TrackingCode = null);
 
 public sealed class OrderConcurrencyException(string message) : InvalidOperationException(message);
 
@@ -94,6 +98,7 @@ public interface IOrderRepository
     Task<Product?> ProductAsync(Guid id, CancellationToken ct);
     Task<Offer?> OfferAsync(Guid id, CancellationToken ct);
     Task<Order?> OrderAsync(Guid id, CancellationToken ct);
+    Task<IReadOnlyList<OrderTimelineEvent>> TimelineAsync(Guid id, CancellationToken ct);
     Task<Order?> ByIdempotencyAsync(string buyerId, Guid key, CancellationToken ct);
     Task<IReadOnlyList<Order>> MineAsync(string userId, CancellationToken ct);
     Task<IReadOnlyList<Order>> AdminQueueAsync(CancellationToken ct);
@@ -115,9 +120,10 @@ public interface IOrderService
     Task<IReadOnlyList<OrderDto>> MineAsync(string userId, CancellationToken ct);
     Task<IReadOnlyList<OrderDto>> AdminQueueAsync(CancellationToken ct);
     Task<OrderDto> CancelAsync(Guid id, string actorId, bool isAdmin, CancellationToken ct);
+    Task<OrderDto> ConfirmAsync(Guid id, string adminId, CancellationToken ct);
     Task<OrderDto> ReturnUndeliveredAsync(Guid id, string adminId, bool itemReturnedToStore, CancellationToken ct);
-    Task<OrderDto> MarkReadyAsync(Guid id, string adminId, CancellationToken ct);
-    Task<OrderDto> ConfirmPaymentAsync(Guid id, string adminId, string reference, CancellationToken ct);
+    Task<OrderDto> MarkReadyAsync(Guid id, string adminId, CancellationToken ct, string? trackingCode = null);
+    Task<OrderDto> ConfirmPaymentAsync(Guid id, string adminId, string? reference, CancellationToken ct);
     Task<OrderDto> CompleteAsync(Guid id, string adminId, CancellationToken ct);
 }
 
@@ -187,17 +193,17 @@ public sealed class OrderService(IOrderRepository repository, MarketplacePolicy 
                         .ToString("dd/MM/yyyy HH:mm")
                     : null;
                 Notify(order.SellerId, order, pickupLabel is null
-                    ? $"{order.ProductSku} đã có đơn mới ({FulfillmentName(order.Fulfillment)})."
-                    : $"{order.ProductSku} đang được CoCo tạm giữ cho khách lấy lúc {pickupLabel} (giờ Việt Nam).", now);
+                    ? $"{order.ProductName} đã có đơn mới ({FulfillmentName(order.Fulfillment)})."
+                    : $"{order.ProductName} đang được CoCo tạm giữ cho khách lấy lúc {pickupLabel} (giờ Việt Nam).", now);
                 Notify(order.BuyerId, order, pickupLabel is null
-                    ? $"Đơn {order.ProductSku} đã được ghi nhận, đang chờ xử lý."
-                    : $"CoCo đang tạm giữ {order.ProductSku} cho lịch lấy lúc {pickupLabel} (giờ Việt Nam).", now);
+                    ? $"Đơn {order.ProductName} đã được ghi nhận, đang chờ xử lý."
+                    : $"CoCo đang tạm giữ {order.ProductName} cho lịch lấy lúc {pickupLabel} (giờ Việt Nam).", now);
                 foreach (var adminId in await repository.AdminUserIdsAsync(ct))
                 {
                     if (adminId == order.SellerId || adminId == order.BuyerId) continue;
                     Notify(adminId, order, pickupLabel is null
-                        ? $"Đơn mới {order.ProductSku}: {FulfillmentName(order.Fulfillment)}, phí giao {order.ShippingFee:N0} VNĐ."
-                        : $"Tạm giữ {order.ProductSku} cho khách lấy tại CoCo lúc {pickupLabel} (giờ Việt Nam).", now);
+                        ? $"Đơn mới {order.ProductName}: {FulfillmentName(order.Fulfillment)}, phí giao {order.ShippingFee:N0} VNĐ."
+                        : $"Tạm giữ {order.ProductName} cho khách lấy tại CoCo lúc {pickupLabel} (giờ Việt Nam).", now);
                 }
                 await repository.SaveAsync(ct);
                 return ToDto(order);
@@ -243,8 +249,8 @@ public sealed class OrderService(IOrderRepository repository, MarketplacePolicy 
     public async Task<OrderDto?> DetailsAsync(Guid id, string viewerId, bool isAdmin, CancellationToken ct)
     {
         var order = await repository.OrderAsync(id, ct);
-        return order is null || !isAdmin && viewerId != order.BuyerId && viewerId != order.SellerId
-            ? null : ForViewer(order, viewerId, isAdmin);
+        if (order is null || !isAdmin && viewerId != order.BuyerId && viewerId != order.SellerId) return null;
+        return ForViewer(order, viewerId, isAdmin) with { Timeline = await repository.TimelineAsync(id, ct) };
     }
     public async Task<IReadOnlyList<OrderDto>> MineAsync(string userId, CancellationToken ct) =>
         (await repository.MineAsync(userId, ct)).Select(x => ForViewer(x, userId, false)).ToList();
@@ -258,15 +264,17 @@ public sealed class OrderService(IOrderRepository repository, MarketplacePolicy 
         return await ChangeAsync(id, async (order, product, now) =>
         {
             if (!isAdmin && order.BuyerId != actorId) throw new UnauthorizedAccessException("Chỉ người mua hoặc quản trị viên mới được hủy đơn.");
+            if (!isAdmin && (await repository.TimelineAsync(id, ct)).Any(x => x.Action == "OrderConfirmed"))
+                throw new InvalidOperationException("CoCo đã xác nhận đơn. Vui lòng liên hệ cửa hàng nếu cần hủy.");
             if (lifecycle is null) order.Cancel(product, isAdmin, now);
             else lifecycle.Cancel(order, product, isAdmin, now);
             Audit(actorId, order, "OrderCancelled", now);
-            Notify(order.BuyerId, order, $"Đơn {order.ProductSku} đã hủy; sản phẩm mở bán lại.", now);
-            Notify(order.SellerId, order, $"Đơn {order.ProductSku} đã hủy; sản phẩm mở bán lại.", now);
+            Notify(order.BuyerId, order, $"Đơn {order.ProductName} đã hủy; sản phẩm mở bán lại.", now);
+            Notify(order.SellerId, order, $"Đơn {order.ProductName} đã hủy; sản phẩm mở bán lại.", now);
             foreach (var adminId in await repository.AdminUserIdsAsync(ct))
             {
                 if (adminId == order.BuyerId || adminId == order.SellerId) continue;
-                Notify(adminId, order, $"Đơn {order.ProductSku} đã hủy bởi {actorId}.", now);
+                Notify(adminId, order, $"Đơn {order.ProductName} đã hủy bởi {actorId}.", now);
             }
         }, ct);
     }
@@ -279,24 +287,44 @@ public sealed class OrderService(IOrderRepository repository, MarketplacePolicy 
         {
             order.ReturnUndelivered(product, now);
             Audit(adminId, order, "DeliveryReturnedUndelivered", now);
-            Notify(order.BuyerId, order, $"Đơn {order.ProductSku} không được nhận và đã hủy sau khi hàng về CoCo.", now);
-            Notify(order.SellerId, order, $"Đơn {order.ProductSku} không được nhận; món đồ đã về CoCo và mở bán lại.", now);
+            Notify(order.BuyerId, order, $"Đơn {order.ProductName} không được nhận và đã hủy sau khi hàng về CoCo.", now);
+            Notify(order.SellerId, order, $"Đơn {order.ProductName} không được nhận; món đồ đã về CoCo và mở bán lại.", now);
             return Task.CompletedTask;
         }, ct);
     }
-    public async Task<OrderDto> MarkReadyAsync(Guid id, string adminId, CancellationToken ct)
+    public async Task<OrderDto> MarkReadyAsync(Guid id, string adminId, CancellationToken ct, string? trackingCode = null)
     {
         await EnsureOrderAdminAsync(adminId, ct);
-        return await ChangeAsync(id, (order, _, now) =>
+        return await ChangeAsync(id, async (order, _, now) =>
         {
-            if (lifecycle is null) order.MarkReady(); else lifecycle.MarkReady(order);
-            Notify(order.BuyerId, order, $"Đơn {order.ProductSku} đã sẵn sàng: {OrderStatusName(order.Status)}.", now);
+            if (lifecycle is null) order.MarkReady(trackingCode); else lifecycle.MarkReady(order, trackingCode);
+            // Older clients can still mark an order ready directly. Record confirmation at the same time.
+            if (!(await repository.TimelineAsync(id, ct)).Any(x => x.Action == "OrderConfirmed"))
+                Audit(adminId, order, "OrderConfirmed", now);
+            Notify(order.BuyerId, order, order.Fulfillment == FulfillmentType.Shipping
+                ? $"Đơn {order.ProductName} đã bàn giao vận chuyển. Mã vận chuyển: {order.TrackingCode}."
+                : $"Đơn {order.ProductName} đã sẵn sàng: {OrderStatusName(order.Status)}.", now);
             Audit(adminId, order, "OrderPrepared", now);
-            Notify(order.SellerId, order, $"Đơn {order.ProductSku} chuyển sang {OrderStatusName(order.Status)}.", now);
-            return Task.CompletedTask;
+            Notify(order.SellerId, order, order.Fulfillment == FulfillmentType.Shipping
+                ? $"Đơn {order.ProductName} đã bàn giao vận chuyển. Mã vận chuyển: {order.TrackingCode}."
+                : $"Đơn {order.ProductName} chuyển sang {OrderStatusName(order.Status)}.", now);
         }, ct);
     }
-    public async Task<OrderDto> ConfirmPaymentAsync(Guid id, string adminId, string reference, CancellationToken ct)
+    public async Task<OrderDto> ConfirmAsync(Guid id, string adminId, CancellationToken ct)
+    {
+        await EnsureOrderAdminAsync(adminId, ct);
+        return await ChangeAsync(id, async (order, _, now) =>
+        {
+            if (order.Status != OrderStatus.PendingProcessing)
+                throw new InvalidOperationException("Chỉ đơn mới chờ xử lý mới được xác nhận.");
+            if ((await repository.TimelineAsync(id, ct)).Any(x => x.Action == "OrderConfirmed"))
+                throw new InvalidOperationException("Đơn hàng đã được CoCo xác nhận.");
+            Audit(adminId, order, "OrderConfirmed", now);
+            Notify(order.BuyerId, order, $"CoCo đã xác nhận đơn {order.ProductName} và đang chuẩn bị hàng.", now);
+            Notify(order.SellerId, order, $"CoCo đã xác nhận đơn {order.ProductName}.", now);
+        }, ct);
+    }
+    public async Task<OrderDto> ConfirmPaymentAsync(Guid id, string adminId, string? reference, CancellationToken ct)
     {
         await EnsureOrderAdminAsync(adminId, ct);
         return await ChangeAsync(id, (order, _, now) =>
@@ -304,8 +332,8 @@ public sealed class OrderService(IOrderRepository repository, MarketplacePolicy 
             if (lifecycle is null) order.ConfirmPayment(adminId, reference, now);
             else lifecycle.ConfirmPayment(order, adminId, reference, now);
             Audit(adminId, order, "PaymentConfirmed", now);
-            Notify(order.BuyerId, order, $"CoCo đã xác nhận thanh toán cho đơn {order.ProductSku}.", now);
-            Notify(order.SellerId, order, $"CoCo đã xác nhận thanh toán cho {order.ProductSku}.", now);
+            Notify(order.BuyerId, order, $"CoCo đã xác nhận thanh toán cho đơn {order.ProductName}.", now);
+            Notify(order.SellerId, order, $"CoCo đã xác nhận thanh toán cho {order.ProductName}.", now);
             return Task.CompletedTask;
         }, ct);
     }
@@ -319,8 +347,8 @@ public sealed class OrderService(IOrderRepository repository, MarketplacePolicy 
             if (payouts is null) throw new InvalidOperationException("Chưa cấu hình dịch vụ ghi có ví người bán.");
             await payouts.CreditCompletedOrderAsync(order, adminId, now, ct);
             Audit(adminId, order, "OrderCompleted", now);
-            Notify(order.BuyerId, order, $"Đơn {order.ProductSku} đã giao/nhận thành công.", now);
-            Notify(order.SellerId, order, $"{order.ProductSku} đã giao/nhận thành công; tiền bán hàng đã được ghi có vào ví.", now);
+            Notify(order.BuyerId, order, $"Đơn {order.ProductName} đã giao/nhận thành công.", now);
+            Notify(order.SellerId, order, $"{order.ProductName} đã giao/nhận thành công; tiền bán hàng đã được ghi có vào ví.", now);
         }, ct);
     }
     private Task EnsureOrderAdminAsync(string actorId, CancellationToken ct) =>
@@ -357,7 +385,7 @@ public sealed class OrderService(IOrderRepository repository, MarketplacePolicy 
         x.Province, x.Ward, x.StreetAddress, x.PickupAtUtc, x.PickupAddress, x.ItemAmount, x.ShippingFee, x.TotalAmount,
         x.CommissionAmount, x.Status, x.PaymentStatus, x.PaymentReference,
         x.CreatedAtUtc, x.PaidAtUtc, x.CancelledAtUtc, x.CompletedAtUtc,
-        x.PreferredDeliveryWindow, x.DeliveryNote, x.PickupDeadlineAtUtc);
+        x.PreferredDeliveryWindow, x.DeliveryNote, x.PickupDeadlineAtUtc, TrackingCode: x.TrackingCode);
     private static OrderDto ForViewer(Order x, string viewerId, bool isAdmin)
     {
         var dto = ToDto(x);
