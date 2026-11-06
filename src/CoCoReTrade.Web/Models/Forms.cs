@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using CoCoReTrade.Application;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CoCoReTrade.Web.Models;
 
@@ -43,19 +44,23 @@ public sealed class ChangePasswordForm
 public sealed class ListingForm
 {
     [Required(ErrorMessage = "Vui lòng nhập trường này."), MinLength(3, ErrorMessage = "Cần ít nhất {1} ký tự."), Display(Name = "Tên sản phẩm")] public string Name { get; set; } = "";
-    [Display(Name = "Thương hiệu (không bắt buộc)")] public string Brand { get; set; } = "";
+    [Display(Name = "Thương hiệu (không bắt buộc)")] public string? Brand { get; set; }
     [Required(ErrorMessage = "Vui lòng nhập trường này."), Display(Name = "Danh mục")] public string Category { get; set; } = "";
     [Required(ErrorMessage = "Vui lòng nhập trường này."), Display(Name = "Kích cỡ")] public string Size { get; set; } = "";
-    [Range(1000, 999999999999, ErrorMessage = "Số tiền phải từ 1,000 đến 999,999,999,999 VNĐ. Ví dụ: nhập 29000 cho 29,000 VNĐ."), Display(Name = "Giá gốc")] public decimal OriginalPrice { get; set; }
-    [Range(1000, 999999999999, ErrorMessage = "Số tiền phải từ 1,000 đến 999,999,999,999 VNĐ. Ví dụ: nhập 29000 cho 29,000 VNĐ."), Display(Name = "Giá mong muốn")] public decimal AskingPrice { get; set; }
+    [ModelBinder(BinderType = typeof(VndPriceBinder))]
+    [Range(1000, 999999999999, ErrorMessage = "Giá phải từ 1,000 đến 999,999,999,999 VNĐ."), Display(Name = "Giá gốc")] public decimal OriginalPrice { get; set; }
+    [ModelBinder(BinderType = typeof(VndPriceBinder))]
+    [Range(1000, 999999999999, ErrorMessage = "Giá phải từ 1,000 đến 999,999,999,999 VNĐ."), Display(Name = "Giá mong muốn")] public decimal AskingPrice { get; set; }
     [Range(50, 100, ErrorMessage = "Giá trị phải từ {1} đến {2}."), Display(Name = "Độ mới (%)")] public int ConditionPercent { get; set; } = 95;
     public bool AllowOffers { get; set; } = true;
+    [Range(typeof(bool), "true", "true", ErrorMessage = "Vui lòng xác nhận đã đọc lưu ý gửi sản phẩm.")]
+    public bool AcknowledgedDeliveryInstructions { get; set; }
     [Display(Name = "Ảnh sản phẩm")] public List<IFormFile> Images { get; set; } = [];
     public List<Guid> RetainedImageIds { get; set; } = [];
     public string ExpectedRowVersion { get; set; } = "";
-    public SubmitListing ToRequest() => new(Name, Brand, Category, Size, OriginalPrice, AskingPrice, ConditionPercent,
+    public SubmitListing ToRequest() => new(Name, Brand ?? "", Category, Size, OriginalPrice, AskingPrice, ConditionPercent,
         AllowOffers, Images.Select(f => new ImageUpload(f.FileName, f.ContentType, f.Length, f.OpenReadStream)).ToList());
-    public EditListing ToEditRequest() => new(Name, Brand, Category, Size, OriginalPrice, AskingPrice,
+    public EditListing ToEditRequest() => new(Name, Brand ?? "", Category, Size, OriginalPrice, AskingPrice,
         ConditionPercent, AllowOffers, RetainedImageIds,
         Images.Select(f => new ImageUpload(f.FileName, f.ContentType, f.Length, f.OpenReadStream)).ToList(), ExpectedRowVersion);
 }
@@ -63,19 +68,21 @@ public sealed class InspectionForm
 {
     public Guid ProductId { get; set; }
     [Required(ErrorMessage = "Vui lòng nhập trường này.")] public string ExpectedRowVersion { get; set; } = "";
-    public bool Passed { get; set; } = true;
+    public bool Passed { get; set; }
     [Required(ErrorMessage = "Vui lòng nhập trường này."), MinLength(3, ErrorMessage = "Cần ít nhất {1} ký tự."), Display(Name = "Tên sau kiểm định")] public string Name { get; set; } = "";
-    [Display(Name = "Thương hiệu (không bắt buộc)")] public string Brand { get; set; } = "";
+    [Display(Name = "Thương hiệu (không bắt buộc)")] public string? Brand { get; set; }
     [Required(ErrorMessage = "Vui lòng nhập trường này."), Display(Name = "Danh mục")] public string Category { get; set; } = "";
     [Required(ErrorMessage = "Vui lòng nhập trường này."), Display(Name = "Kích cỡ")] public string Size { get; set; } = "";
-    [Range(1000, 999999999999, ErrorMessage = "Số tiền phải từ 1,000 đến 999,999,999,999 VNĐ. Ví dụ: nhập 29000 cho 29,000 VNĐ."), Display(Name = "Giá gốc")] public decimal OriginalPrice { get; set; }
-    [Range(1000, 999999999999, ErrorMessage = "Số tiền phải từ 1,000 đến 999,999,999,999 VNĐ. Ví dụ: nhập 29000 cho 29,000 VNĐ."), Display(Name = "Giá niêm yết")] public decimal AskingPrice { get; set; }
+    [ModelBinder(BinderType = typeof(VndPriceBinder))]
+    [Range(1000, 999999999999, ErrorMessage = "Giá phải từ 1,000 đến 999,999,999,999 VNĐ."), Display(Name = "Giá gốc")] public decimal OriginalPrice { get; set; }
+    [ModelBinder(BinderType = typeof(VndPriceBinder))]
+    [Range(1000, 999999999999, ErrorMessage = "Giá phải từ 1,000 đến 999,999,999,999 VNĐ."), Display(Name = "Giá niêm yết")] public decimal AskingPrice { get; set; }
     [Range(50, 100, ErrorMessage = "Giá trị phải từ {1} đến {2}."), Display(Name = "Độ mới thực tế (%)")] public int VerifiedCondition { get; set; }
     [StringLength(2000, ErrorMessage = "Ghi chú kiểm định không được vượt quá 2,000 ký tự."), Display(Name = "Ghi chú kiểm định")]
     public string? Notes { get; set; }
     [Display(Name = "Lý do từ chối")] public string RejectionReason { get; set; } = "";
     [Display(Name = "Ảnh kiểm định bổ sung")] public List<IFormFile> InspectionImages { get; set; } = [];
-    public InspectionSubmission ToRequest() => new(Passed, Name, Brand, Category, Size, OriginalPrice,
+    public InspectionSubmission ToRequest() => new(Passed, Name, Brand ?? "", Category, Size, OriginalPrice,
         AskingPrice, VerifiedCondition, Notes, ExpectedRowVersion,
         InspectionImages.Select(f => new ImageUpload(f.FileName, f.ContentType, f.Length, f.OpenReadStream)).ToList());
 }

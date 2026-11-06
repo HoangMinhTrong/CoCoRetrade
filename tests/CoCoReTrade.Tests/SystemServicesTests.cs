@@ -29,9 +29,9 @@ public sealed class SystemServicesTests
         Assert.Equal(0, await shipping.FeeAsync(FulfillmentType.Pickup, null, null, default));
         Assert.Equal(20_000, await shipping.FeeAsync(FulfillmentType.Shipping, "Hồ Chí Minh", "Bến Nghé", default));
         Assert.Equal(35_000, await shipping.FeeAsync(FulfillmentType.Shipping, "Hà Nội", "Ba Đình", default));
-        var commission = new CommissionService(new MarketplacePolicy(25, 15));
-        Assert.Equal(37_500, commission.Calculate(250_000));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new MarketplacePolicy(25, 21));
+        var commission = new CommissionService(new MarketplacePolicy());
+        Assert.Equal(87_500, commission.Calculate(250_000));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new MarketplacePolicy(25, 36));
     }
 
     [Fact]

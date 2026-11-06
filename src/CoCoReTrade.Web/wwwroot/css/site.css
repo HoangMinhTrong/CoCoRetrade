@@ -303,6 +303,7 @@ a, button, input, select, textarea, summary { -webkit-tap-highlight-color: trans
 .admin-workspace .panel { border-color: #e8e5eb; box-shadow: 0 2px 8px #30213902; }
 .admin-section-heading { margin: 30px 0 18px; }
 .admin-metric-card { position: relative; padding: 22px 24px; }
+.admin-metric-card[href]:hover, .admin-metric-card[href]:focus-visible { border-color: #d6b7c6; box-shadow: var(--shadow); }
 .admin-metric-value { font-size: 2.35rem; line-height: 1.2; letter-spacing: -.05em; font-weight: 750; margin: 17px 0 10px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .admin-metric-card h2 { color: #756976; font-weight: 500; }
 .admin-quick-link { display: flex; align-items: flex-start; gap: 16px; color: var(--ink); padding: 24px 20px; transition: border-color .2s, box-shadow .2s; }
@@ -365,6 +366,8 @@ a, button, input, select, textarea, summary { -webkit-tap-highlight-color: trans
 .listing-steps strong { font-weight: 650; }
 .listing-steps p { margin: 6px 0 0; color: var(--muted); font-size: .81rem; line-height: 1.7; }
 .listing-submit { border: 0; background: transparent; padding: 0 0 15px; }
+.listing-acknowledgement { padding: 16px 18px; border: 1px solid #e8d4d9; border-radius: 12px; background: #fff8f9; }
+.listing-acknowledgement .form-check-label { line-height: 1.65; }
 .conversation-item, .support-ticket-row { color: var(--ink); transition: border-color .2s, box-shadow .2s; }
 .conversation-item:hover, .support-ticket-row:hover { color: var(--ink); border-color: #d6b7c6; box-shadow: var(--shadow); }
 .conversation-item.is-unread { background: #fffbfc; border-color: #e4c7d3; }

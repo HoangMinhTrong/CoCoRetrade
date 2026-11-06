@@ -50,6 +50,42 @@ document.querySelectorAll('input[data-preview]').forEach(input => {
   });
 });
 
+document.querySelectorAll('form.listing-form').forEach(form => {
+  const acknowledgement = form.querySelector('input[data-listing-ack]');
+  const submit = form.querySelector('button[data-listing-submit]');
+  if (!acknowledgement || !submit) return;
+  const sync = () => { submit.disabled = !acknowledgement.checked; };
+  acknowledgement.addEventListener('change', sync);
+  sync();
+});
+
+document.querySelectorAll('button[data-inspection-publish]').forEach(button => {
+  const approved = button.form?.querySelector('input[type="checkbox"][name="Passed"]');
+  if (!approved) return;
+  const sync = () => { button.disabled = !approved.checked; };
+  approved.addEventListener('change', sync);
+  sync();
+});
+
+document.querySelectorAll('input[data-vnd-price]').forEach(input => {
+  const format = value => value.replace(/[^0-9]/g, '').replace(/^0+(?=[0-9])/, '')
+    .replace(/\B(?=([0-9]{3})+(?![0-9]))/g, ',');
+  input.value = input.value === '0' ? '' : format(input.value);
+  input.addEventListener('input', () => {
+    const digitsBeforeCaret = input.value.slice(0, input.selectionStart ?? input.value.length)
+      .replace(/[^0-9]/g, '').length;
+    const formatted = format(input.value);
+    input.value = formatted;
+    let position = 0;
+    let digits = 0;
+    while (position < formatted.length && digits < digitsBeforeCaret) {
+      if (/[0-9]/.test(formatted[position])) digits++;
+      position++;
+    }
+    input.setSelectionRange(position, position);
+  });
+});
+
 (() => {
   const badges = document.querySelectorAll('[data-cart-count]');
   let cartUpdated = false;

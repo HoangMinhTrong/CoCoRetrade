@@ -6,10 +6,10 @@ public sealed class MarketplacePolicy
 {
     public int MaximumOfferDiscountPercent { get; }
     public int CommissionPercent { get; }
-    public MarketplacePolicy(int maximumOfferDiscountPercent = 25, int commissionPercent = 15)
+    public MarketplacePolicy(int maximumOfferDiscountPercent = 25, int commissionPercent = 35)
     {
         if (maximumOfferDiscountPercent is < 20 or > 30) throw new ArgumentOutOfRangeException(nameof(maximumOfferDiscountPercent), "Mức giảm tối đa phải từ 20% đến 30%.");
-        if (commissionPercent is < 15 or > 20) throw new ArgumentOutOfRangeException(nameof(commissionPercent), "Hoa hồng phải từ 15% đến 20%.");
+        if (commissionPercent is < 15 or > 35) throw new ArgumentOutOfRangeException(nameof(commissionPercent), "Hoa hồng phải từ 15% đến 35%.");
         MaximumOfferDiscountPercent = maximumOfferDiscountPercent;
         CommissionPercent = commissionPercent;
     }

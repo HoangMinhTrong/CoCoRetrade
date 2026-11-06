@@ -119,6 +119,30 @@ public sealed class AdminModuleTests
     }
 
     [Fact]
+    public async Task AdminInspectsAndPublishesInOneSave()
+    {
+        var product = NewProduct("CG-2026-000012");
+        var (service, store) = Setup(product);
+        var version = Convert.ToBase64String(product.RowVersion);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            service.InspectAndPublishAsync("inspector", product.Id, Submission(version), default));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.InspectAndPublishAsync("admin", product.Id, Submission(version, false), default));
+        Assert.Empty(store.TrackedInspections);
+        Assert.Empty(store.Notifications);
+
+        var published = await service.InspectAndPublishAsync("admin", product.Id, Submission(version), default);
+        Assert.Equal(ProductStatus.Active, published.Product.Status);
+        Assert.Equal(92, published.Product.VerifiedCondition);
+        Assert.Matches(@"^CC-\d{4}-\d{6}$", published.Product.Sku);
+        Assert.Single(store.TrackedInspections);
+        Assert.Equal(2, store.Audits.Count);
+        Assert.Single(store.Notifications);
+        Assert.Equal(1, store.SaveCount);
+    }
+
+    [Fact]
     public async Task FailedInspectionCannotPublishAndRejectionRequiresReasonAndNotifiesSeller()
     {
         var product = NewProduct("CG-2026-000003");
@@ -157,12 +181,12 @@ public sealed class AdminModuleTests
         var first = NewProduct("CG-2026-000004");
         var second = NewProduct("CG-2026-000005");
         var (service, store) = Setup(first, second);
-        var firstInspection = await service.InspectAsync("inspector", first.Id, Submission(Convert.ToBase64String(first.RowVersion)), default);
-        var secondInspection = await service.InspectAsync("inspector", second.Id, Submission(Convert.ToBase64String(second.RowVersion)), default);
+        await service.InspectAsync("inspector", first.Id, Submission(Convert.ToBase64String(first.RowVersion)), default);
+        await service.InspectAsync("inspector", second.Id, Submission(Convert.ToBase64String(second.RowVersion)), default);
         Assert.Empty(first.Sku);
         Assert.Empty(second.Sku);
-        await service.PublishAsync("admin", first.Id, firstInspection.RowVersion, true, default);
-        await service.PublishAsync("admin", second.Id, secondInspection.RowVersion, true, default);
+        await service.PublishAsync("admin", first.Id, Convert.ToBase64String(first.RowVersion), true, default);
+        await service.PublishAsync("admin", second.Id, Convert.ToBase64String(second.RowVersion), true, default);
         Assert.NotEqual(first.Sku, second.Sku);
         var allocations = await Task.WhenAll(Enumerable.Range(0, 50).Select(_ => store.NextAsync(default)));
         Assert.Equal(allocations.Length, allocations.Distinct().Count());
@@ -221,14 +245,16 @@ public sealed class AdminModuleTests
         public List<AuditLog> Audits { get; } = [];
         public List<Inspection> TrackedInspections { get; } = [];
         public List<MarketplaceNotification> Notifications { get; } = [];
+        public int SaveCount { get; private set; }
         public MemoryAdminStore(Product[] initial)
         {
             products = new(initial.ToDictionary(x => x.Id));
             foreach (var p in initial) SetVersion(p, BitConverter.GetBytes(Interlocked.Increment(ref rowVersion)));
         }
         public Task<Product?> FindAsync(Guid id, CancellationToken ct) => Task.FromResult(products.GetValueOrDefault(id));
-        public Task<IReadOnlyList<AdminProductItem>> ListAsync(ProductStatus? status, string? search, CancellationToken ct) =>
-            Task.FromResult<IReadOnlyList<AdminProductItem>>(products.Values.Where(x => status is null || x.Status == status)
+        public Task<IReadOnlyList<AdminProductItem>> ListAsync(ProductStatus? status, string? search, CancellationToken ct, bool inspectedOnly = false) =>
+            Task.FromResult<IReadOnlyList<AdminProductItem>>(products.Values.Where(x => (status is null || x.Status == status) &&
+                (!inspectedOnly || x.LatestInspectionId != null))
                 .Select(x => new AdminProductItem(x.Id, x.ConsignmentCode, x.Sku, x.Name, x.Brand, "Seller", x.Status,
                     x.VerifiedCondition, x.CreatedAtUtc)).ToList());
         public Task<AdminProductDashboard> DashboardAsync(CancellationToken ct) =>
@@ -245,6 +271,7 @@ public sealed class AdminModuleTests
         public void AddNotification(MarketplaceNotification notification) => Notifications.Add(notification);
         public Task SaveAsync(CancellationToken ct)
         {
+            SaveCount++;
             foreach (var p in products.Values) SetVersion(p, BitConverter.GetBytes(Interlocked.Increment(ref rowVersion)));
             return Task.CompletedTask;
         }

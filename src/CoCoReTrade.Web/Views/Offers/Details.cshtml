@@ -1,5 +1,4 @@
 @model OfferDto
-@inject ShippingPolicy Shipping
 @{ ViewData["Title"] = "Đề xuất giá " + Model.ProductSku; var me = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
    var myTurn = (Model.Status == OfferStatus.PendingSeller && me == Model.SellerId) || (Model.Status == OfferStatus.PendingBuyer && me == Model.BuyerId);
    var canCounter = Model.CounterMinimumPrice.HasValue && Model.CounterMaximumPrice.HasValue; }
@@ -12,20 +11,13 @@
     <div class="spec-row"><span>Lượt gửi giá của người mua</span><strong>@Model.BuyerOffersUsed / 3</strong></div>
     @if (Model.Status == OfferStatus.Accepted)
     {
-        <div class="alert alert-success mt-4">Giá @Model.AcceptedPrice?.ToString("N0") VNĐ chỉ dành cho người mua này trong 24 giờ. Nếu chọn nhận tại CoCo, món đồ sẽ được tạm giữ sau khi người mua chọn giờ lấy và xác nhận đơn hàng.</div>
+        <div class="alert alert-success mt-4">Giá @Model.AcceptedPrice?.ToString("N0") VNĐ chỉ dành cho người mua này trong 24 giờ. Nếu chọn nhận tại CoCo, món đồ sẽ được tạm giữ sau khi người mua xác nhận đơn hàng.</div>
         @if ((bool?)ViewBag.PreviewMode == true) { <a asp-controller="Preview" asp-action="Checkout" class="btn btn-wine w-100">Xem màn hình đặt hàng →</a> }
         else if (me == Model.BuyerId)
         {
-            <p class="small mb-2">Chọn cách nhận hàng theo giá đã thỏa thuận:</p>
-            <div class="d-grid d-sm-flex gap-2">
-                @if (Shipping.CanPickup)
-                { <a asp-controller="Checkout" asp-action="Index" asp-route-productId="@Model.ProductId" asp-route-offerId="@Model.Id" asp-route-fulfillment="Pickup" class="btn btn-wine flex-fill">Tới CoCo lấy trong 24 giờ</a> }
-                else
-                { <button type="button" class="btn btn-outline-wine flex-fill" disabled aria-describedby="pickupUnavailable">Tới CoCo lấy trong 24 giờ</button> }
-                <a asp-controller="Checkout" asp-action="Index" asp-route-productId="@Model.ProductId" asp-route-offerId="@Model.Id" asp-route-fulfillment="Shipping" class="btn btn-outline-wine flex-fill">Giao hàng tận nơi</a>
-            </div>
-            @if (!Shipping.CanPickup) { <p id="pickupUnavailable" class="alert alert-warning mt-3">Chưa thể chọn nhận tại CoCo vì cửa hàng chưa cấu hình địa chỉ lấy hàng. Vui lòng chọn giao tận nơi hoặc thử lại sau.</p> }
-            <p class="form-text mt-2">Nếu chọn lấy tại CoCo, hãy hẹn giờ và xác nhận đơn. CoCo sẽ tạm giữ món đồ, ẩn khỏi sàn cho đến giờ hẹn. Quá hạn chưa lấy và chưa thanh toán, đơn được hủy và món đồ mở bán lại theo giá niêm yết.</p>
+            <p class="small mb-2">Bạn sẽ chọn cách nhận hàng ở bước đặt hàng.</p>
+            <a asp-controller="Checkout" asp-action="Index" asp-route-productId="@Model.ProductId" asp-route-offerId="@Model.Id" class="btn btn-wine w-100">Tiến hành đặt hàng</a>
+            <p class="form-text mt-2">Nếu chọn lấy tại CoCo, hãy chọn giờ nhận trước khi giá thỏa thuận hết hạn. CoCo sẽ tạm giữ món đồ, ẩn khỏi sàn trong thời gian đó. Quá hạn chưa lấy và chưa thanh toán, đơn được hủy và món đồ mở bán lại theo giá niêm yết.</p>
         }
     }
     else if (myTurn)

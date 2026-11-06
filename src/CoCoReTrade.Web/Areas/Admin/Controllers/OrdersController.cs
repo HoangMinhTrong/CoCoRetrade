@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using CoCoReTrade.Application;
+using CoCoReTrade.Domain;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,7 +11,18 @@ namespace CoCoReTrade.Web.Areas.Admin.Controllers;
 public sealed class OrdersController(IAdminOrderService orders) : Controller
 {
     private string AdminId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-    [HttpGet] public async Task<IActionResult> Index(CancellationToken ct) => View(await orders.QueueAsync(AdminId, ct));
+    [HttpGet]
+    public async Task<IActionResult> Index(string? group, CancellationToken ct)
+    {
+        var queue = await orders.QueueAsync(AdminId, ct);
+        ViewBag.Group = group;
+        return View(group switch
+        {
+            "active" => queue.Where(x => x.Status is OrderStatus.PendingProcessing or OrderStatus.Shipping or OrderStatus.ReadyForPickup).ToList(),
+            "completed" => queue.Where(x => x.Status == OrderStatus.Completed).ToList(),
+            _ => queue
+        });
+    }
     [HttpGet] public async Task<IActionResult> HeldPickups(CancellationToken ct) =>
         View(await orders.HeldPickupsAsync(AdminId, ct));
     [HttpGet]

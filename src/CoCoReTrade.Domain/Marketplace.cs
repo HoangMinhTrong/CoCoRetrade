@@ -33,7 +33,7 @@ public static class CommissionRules
 {
     public static decimal Calculate(decimal merchandisePrice, int percent)
     {
-        if (percent is < 15 or > 20) throw new ArgumentOutOfRangeException(nameof(percent));
+        if (percent is < 15 or > 35) throw new ArgumentOutOfRangeException(nameof(percent));
         if (merchandisePrice <= 0 || merchandisePrice != decimal.Truncate(merchandisePrice))
             throw new ArgumentOutOfRangeException(nameof(merchandisePrice));
         return decimal.Round(merchandisePrice * percent / 100, 0, MidpointRounding.AwayFromZero);
@@ -206,7 +206,7 @@ public sealed class Product
             string.IsNullOrWhiteSpace(category) || string.IsNullOrWhiteSpace(size) ||
             name.Trim().Length is < 3 or > 200 || (brand?.Trim().Length ?? 0) > 100 ||
             category.Trim().Length is < 2 or > 80 || size.Trim().Length is < 1 or > 30)
-            throw new ArgumentException("Cần nhập tên, thương hiệu, danh mục và kích cỡ sản phẩm.");
+            throw new ArgumentException("Cần nhập tên, danh mục và kích cỡ sản phẩm.");
         if (original < 1_000 || asking < 1_000)
             throw new ArgumentException("Giá sản phẩm phải từ 1,000 VNĐ. Ví dụ: nhập 29000 để bán với giá 29,000 VNĐ.");
         if (asking <= 0 || original < asking || asking > 999_999_999_999_999_999m ||
@@ -462,7 +462,7 @@ public sealed class Order
             if (deliveryNote?.Length > 500) throw new ArgumentException("Ghi chú giao hàng quá dài.");
         }
         else throw new ArgumentOutOfRangeException(nameof(fulfillment));
-        if (commissionPercent is < 15 or > 20) throw new ArgumentOutOfRangeException(nameof(commissionPercent));
+        if (commissionPercent is < 15 or > 35) throw new ArgumentOutOfRangeException(nameof(commissionPercent));
         var item = offer?.AcceptedPrice ?? product.AskingPrice;
         var commission = CommissionRules.Calculate(item, commissionPercent);
         return new Order { ProductId = product.Id, OfferId = offer?.Id, IdempotencyKey = idempotencyKey,

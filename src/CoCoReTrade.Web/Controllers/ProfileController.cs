@@ -75,7 +75,9 @@ public sealed class ProfileController(INotificationCenter notifications, ISocial
         if (string.Equals(item.Category, "Wallets", StringComparison.OrdinalIgnoreCase))
             return RedirectToAction("Wallet", "Profile");
         if (string.Equals(item.Category, "Support", StringComparison.OrdinalIgnoreCase))
-            return RedirectToAction("Index", "Support");
+            return User.IsInRole("Admin")
+                ? RedirectToAction("Index", "HelpDesk", new { area = "Admin" })
+                : RedirectToAction("Index", "Support", new { area = "" });
         return RedirectToAction(nameof(Notifications));
     }
     public async Task<IActionResult> Saved(CancellationToken ct) => View(await social.SavedProductsAsync(UserId, ct));

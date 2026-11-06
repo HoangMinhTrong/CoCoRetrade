@@ -155,7 +155,7 @@ if (!previewMode)
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton(new TrustPolicy(builder.Configuration.GetValue<int?>("Trust:MinimumScore") ?? 30));
 var discount = int.TryParse(builder.Configuration["Marketplace:MaximumOfferDiscountPercent"], out var configuredDiscount) ? configuredDiscount : 25;
-var commission = int.TryParse(builder.Configuration["Marketplace:CommissionPercent"], out var configuredCommission) ? configuredCommission : 15;
+var commission = int.TryParse(builder.Configuration["Marketplace:CommissionPercent"], out var configuredCommission) ? configuredCommission : 35;
 builder.Services.AddSingleton(new MarketplacePolicy(discount, commission));
 builder.Services.AddSingleton(new OrderExpirationPolicy(
     builder.Configuration.GetValue<int?>("Orders:UnpaidReservationMinutes") ?? 1440));

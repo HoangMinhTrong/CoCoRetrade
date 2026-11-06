@@ -52,7 +52,7 @@ public interface IProductTransaction : IAsyncDisposable
 public interface IAdminProductRepository
 {
     Task<Product?> FindAsync(Guid id, CancellationToken ct);
-    Task<IReadOnlyList<AdminProductItem>> ListAsync(ProductStatus? status, string? search, CancellationToken ct);
+    Task<IReadOnlyList<AdminProductItem>> ListAsync(ProductStatus? status, string? search, CancellationToken ct, bool inspectedOnly = false);
     Task<AdminProductDashboard> DashboardAsync(CancellationToken ct);
     Task<IReadOnlyList<AuditEntry>> AuditAsync(Guid? productId, CancellationToken ct);
     Task<string> SellerNameAsync(string sellerId, CancellationToken ct);
@@ -66,10 +66,11 @@ public interface IAdminProductRepository
 public interface IAdminProductService
 {
     Task<AdminProductDashboard> DashboardAsync(string actorId, CancellationToken ct);
-    Task<IReadOnlyList<AdminProductItem>> PendingAsync(string actorId, string? search, CancellationToken ct);
+    Task<IReadOnlyList<AdminProductItem>> PendingAsync(string actorId, string? search, CancellationToken ct, bool inspectedOnly = false);
     Task<IReadOnlyList<AdminProductItem>> ManageAsync(string actorId, ProductStatus? status, string? search, CancellationToken ct);
     Task<AdminProductDetails?> GetAsync(string actorId, Guid id, CancellationToken ct);
     Task<AdminProductDetails> InspectAsync(string actorId, Guid id, InspectionSubmission request, CancellationToken ct);
+    Task<AdminProductDetails> InspectAndPublishAsync(string actorId, Guid id, InspectionSubmission request, CancellationToken ct);
     Task<AdminProductDetails> ReviewPreliminarilyAsync(string actorId, Guid id, PreliminaryReviewStatus decision,
         string? reason, string expectedRowVersion, CancellationToken ct);
     Task<AdminProductDetails> SelectCoverAsync(string actorId, Guid id, Guid imageId,
@@ -89,10 +90,10 @@ public sealed class AdminProductService(IAdminProductRepository repository, ISta
         await permissions.EnsureAsync(actorId, StaffPermissions.ReadPending, ct);
         return await repository.DashboardAsync(ct);
     }
-    public async Task<IReadOnlyList<AdminProductItem>> PendingAsync(string actorId, string? search, CancellationToken ct)
+    public async Task<IReadOnlyList<AdminProductItem>> PendingAsync(string actorId, string? search, CancellationToken ct, bool inspectedOnly = false)
     {
         await permissions.EnsureAsync(actorId, StaffPermissions.ReadPending, ct);
-        return await repository.ListAsync(ProductStatus.PendingApproval, search, ct);
+        return await repository.ListAsync(ProductStatus.PendingApproval, search, ct, inspectedOnly);
     }
     public async Task<IReadOnlyList<AdminProductItem>> ManageAsync(string actorId, ProductStatus? status, string? search, CancellationToken ct)
     {
@@ -107,10 +108,20 @@ public sealed class AdminProductService(IAdminProductRepository repository, ISta
             await permissions.EnsureAsync(actorId, StaffPermissions.ManageProducts, ct);
         return product is null ? null : await ToDetailsAsync(product, ct);
     }
-    public async Task<AdminProductDetails> InspectAsync(string actorId, Guid id, InspectionSubmission request, CancellationToken ct)
+    public Task<AdminProductDetails> InspectAsync(string actorId, Guid id, InspectionSubmission request, CancellationToken ct) =>
+        InspectCoreAsync(actorId, id, request, publish: false, ct);
+
+    public Task<AdminProductDetails> InspectAndPublishAsync(string actorId, Guid id, InspectionSubmission request, CancellationToken ct) =>
+        InspectCoreAsync(actorId, id, request, publish: true, ct);
+
+    private async Task<AdminProductDetails> InspectCoreAsync(string actorId, Guid id, InspectionSubmission request,
+        bool publish, CancellationToken ct)
     {
         await permissions.EnsureAsync(actorId, StaffPermissions.Inspect, ct);
+        if (publish) await permissions.EnsureAsync(actorId, StaffPermissions.Publish, ct);
         if (request is null || request.Images is null) throw new ArgumentException("Cần nhập kết quả kiểm định.");
+        if (publish && !request.Passed)
+            throw new ArgumentException("Hãy xác nhận hiện vật đạt kiểm định trước khi đăng bán.");
         if (request.Images.Count > 10) throw new ArgumentException("Chỉ được tải tối đa 10 ảnh kiểm định.");
         var keys = new List<string>();
         var committed = false;
@@ -131,6 +142,14 @@ public sealed class AdminProductService(IAdminProductRepository repository, ISta
             repository.AddInspection(inspection);
             repository.AddAudit(NewAudit(actorId, "Products.Inspected", product,
                 $"{(request.Passed ? "Passed" : "Failed")}; condition={request.VerifiedCondition}%; SKU={product.Sku}; notes={request.Notes?.Trim() ?? string.Empty}"));
+            if (publish)
+            {
+                var sku = await codes.NewProductSkuAsync(ct);
+                await lifecycle.PublishAsync(actorId, product, sku, clock.GetUtcNow().UtcDateTime, ct);
+                repository.AddAudit(NewAudit(actorId, "Products.Published", product, product.Sku));
+                repository.AddNotification(NewNotification(product.SellerId,
+                    $"Sản phẩm {product.Name} đã được duyệt lên sàn.", product.Id));
+            }
             await repository.SaveAsync(ct);
             var result = await ToDetailsAsync(product, ct);
             await transaction.CommitAsync(ct);

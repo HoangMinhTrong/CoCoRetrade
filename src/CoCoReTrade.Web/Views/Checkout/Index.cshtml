@@ -71,7 +71,9 @@ async function updateQuote(){
   document.getElementById('shippingFields').hidden = !delivery;
   document.getElementById('pickupPaymentNotice').hidden = delivery;
   document.getElementById('shippingPaymentNotice').hidden = !delivery;
-  pickup.required = !delivery; for(const el of [province,ward,street]) el.required = delivery;
+  pickup.required = !delivery; pickup.disabled = delivery;
+  document.getElementById('DeliveryNote').disabled = !delivery;
+  for(const el of [province,ward,street]) el.required = delivery;
   document.getElementById('checkoutSubmit').textContent = delivery ? 'Xác nhận đặt hàng' : 'Xác nhận hẹn lấy · tạm giữ món đồ';
   const feeEl = document.getElementById('shippingFee'), totalEl = document.getElementById('totalAmount');
   if(delivery && (!province.value.trim() || !ward.value.trim())){feeEl.textContent='Chọn tỉnh/thành và phường/xã';totalEl.textContent='—';return;}

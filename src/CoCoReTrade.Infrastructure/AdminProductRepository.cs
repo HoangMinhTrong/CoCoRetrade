@@ -11,12 +11,13 @@ public sealed class AdminProductRepository(AppDbContext db) : IAdminProductRepos
         .Include(x => x.Images).Include(x => x.Inspections).ThenInclude(x => x.Images)
         .AsSplitQuery().FirstOrDefaultAsync(x => x.Id == id, ct);
 
-    public async Task<IReadOnlyList<AdminProductItem>> ListAsync(ProductStatus? status, string? search, CancellationToken ct)
+    public async Task<IReadOnlyList<AdminProductItem>> ListAsync(ProductStatus? status, string? search, CancellationToken ct, bool inspectedOnly = false)
     {
         var query = from p in db.Products.AsNoTracking()
                     join u in db.Users.AsNoTracking() on p.SellerId equals u.Id
                     select new { Product = p, SellerName = u.FullName };
         if (status.HasValue) query = query.Where(x => x.Product.Status == status.Value);
+        if (inspectedOnly) query = query.Where(x => x.Product.LatestInspectionId != null);
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();

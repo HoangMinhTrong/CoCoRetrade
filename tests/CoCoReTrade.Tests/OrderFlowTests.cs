@@ -9,7 +9,7 @@ public sealed class OrderFlowTests
     private static readonly DateTimeOffset Start = new(2026, 10, 13, 5, 0, 0, TimeSpan.Zero);
     private const string PickupLocal = "2026-10-14T10:00";
     private static (Product Product, OrderService Service, MemoryOrders Store, ManualClock Clock) Setup(
-        IEnumerable<ShippingZone>? zones = null, bool active = true)
+        IEnumerable<ShippingZone>? zones = null, bool active = true, ISellerPayoutService? payouts = null)
     {
         var product = Product.Submit(Seller, "CC-2026-000300", "Áo khoác denim", "Zara", "Áo", "M",
             500_000, 300_000, 95, true,
@@ -19,7 +19,7 @@ public sealed class OrderFlowTests
         var clock = new ManualClock(Start);
         var service = new OrderService(store, new MarketplacePolicy(25, 15),
             new ShippingPolicy(zones, storeAddress: "12 Example Street, CoCo"), clock,
-            permissions: new OrderPermissions());
+            permissions: new OrderPermissions(), payouts: payouts);
         return (product, service, store, clock);
     }
     private static CheckoutRequest Pickup(Guid productId, Guid? offerId = null, Guid? key = null,
@@ -75,6 +75,7 @@ public sealed class OrderFlowTests
     public async Task PickupAndDeliveryInputsAreValidatedServerSide()
     {
         var (product, service, _, _) = Setup();
+        await Assert.ThrowsAsync<ArgumentException>(() => service.PlaceAsync(Pickup(product.Id) with { PickupLocal = null }, Buyer, default));
         await Assert.ThrowsAsync<ArgumentException>(() => service.PlaceAsync(Pickup(product.Id) with { PickupLocal = "2026-10-12T10:00" }, Buyer, default));
         await Assert.ThrowsAsync<ArgumentException>(() => service.PlaceAsync(Pickup(product.Id) with { PickupLocal = "2026-10-14T23:00" }, Buyer, default));
         await Assert.ThrowsAsync<ArgumentException>(() => service.PlaceAsync(Pickup(product.Id) with { RecipientPhone = "123" }, Buyer, default));
@@ -168,8 +169,10 @@ public sealed class OrderFlowTests
     [Fact]
     public async Task CompletionRequiresPaymentAndNeverCreditsWalletOnPlacement()
     {
-        var (product, service, _, _) = Setup();
+        var payouts = new MemoryPayouts();
+        var (product, service, _, _) = Setup(payouts: payouts);
         var placed = await service.PlaceAsync(Pickup(product.Id), Buyer, default);
+        Assert.Equal(0, payouts.Credits);
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.CompleteAsync(placed.Id, Admin, default));
         await service.MarkReadyAsync(placed.Id, Admin, default);
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.CompleteAsync(placed.Id, Admin, default));
@@ -180,6 +183,7 @@ public sealed class OrderFlowTests
         var completed = await service.CompleteAsync(placed.Id, Admin, default);
         Assert.Equal(OrderStatus.Completed, completed.Status);
         Assert.Equal(ProductStatus.Sold, product.Status);
+        Assert.Equal(1, payouts.Credits);
         Assert.Contains((await service.AdminQueueAsync(default)), x => x.Id == placed.Id && x.PaymentStatus == PaymentStatus.Paid);
     }
 
@@ -288,6 +292,17 @@ public sealed class OrderFlowTests
         private DateTimeOffset value = now;
         public override DateTimeOffset GetUtcNow() => value;
         public void Advance(TimeSpan span) => value = value.Add(span);
+    }
+    private sealed class MemoryPayouts : ISellerPayoutService
+    {
+        public int Credits { get; private set; }
+        public Task<Guid> CreditCompletedOrderAsync(Order order, string actorId, DateTime nowUtc, CancellationToken ct)
+        {
+            Assert.Equal(OrderStatus.Completed, order.Status);
+            Assert.Equal(PaymentStatus.Paid, order.PaymentStatus);
+            Credits++;
+            return Task.FromResult(Guid.NewGuid());
+        }
     }
     private sealed class MemoryOrders(Product product) : IOrderRepository
     {

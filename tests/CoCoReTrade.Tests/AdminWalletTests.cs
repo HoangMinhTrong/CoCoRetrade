@@ -21,7 +21,7 @@ public sealed class AdminWalletTests
         product.Reserve();
         if (completed)
         {
-            order.MarkReady();
+            order.MarkReady("SHIP-1234");
             order.ConfirmPayment("admin", "CASH-1234", now);
             order.Complete(product, now);
         }

@@ -15,10 +15,11 @@ public sealed class InspectionController(IAdminProductService products) : Contro
     private string ActorId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
     [HttpGet, Authorize(Policy = StaffPermissions.ReadPending)]
-    public async Task<IActionResult> Index(string? search, CancellationToken ct)
+    public async Task<IActionResult> Index(string? search, bool inspectedOnly, CancellationToken ct)
     {
         ViewBag.Search = search;
-        return View(await products.PendingAsync(ActorId, search, ct));
+        ViewBag.InspectedOnly = inspectedOnly;
+        return View(await products.PendingAsync(ActorId, search, ct, inspectedOnly));
     }
 
     [HttpGet, Authorize(Policy = StaffPermissions.ReadPending)]
@@ -37,15 +38,29 @@ public sealed class InspectionController(IAdminProductService products) : Contro
     }
 
     [HttpPost, Authorize(Policy = StaffPermissions.Inspect), RequestSizeLimit(55_000_000)]
-    public async Task<IActionResult> Record(Guid id, InspectionForm form, CancellationToken ct)
+    public Task<IActionResult> Record(Guid id, InspectionForm form, bool saveAsFailed, CancellationToken ct) =>
+        ProcessInspection(id, form, publish: false, saveAsFailed, ct);
+
+    [HttpPost, Authorize(Policy = StaffPermissions.Inspect), Authorize(Policy = StaffPermissions.Publish), RequestSizeLimit(55_000_000)]
+    public Task<IActionResult> RecordAndPublish(Guid id, InspectionForm form, CancellationToken ct) =>
+        ProcessInspection(id, form, publish: true, saveAsFailed: false, ct);
+
+    private async Task<IActionResult> ProcessInspection(Guid id, InspectionForm form, bool publish,
+        bool saveAsFailed, CancellationToken ct)
     {
         if (id != form.ProductId) return BadRequest();
+        if (saveAsFailed) form.Passed = false;
         if (!ModelState.IsValid) return await ReviewWithErrors(id, form, ct);
         try
         {
-            await products.InspectAsync(ActorId, id, form.ToRequest(), ct);
-            TempData["Message"] = "Đã lưu kết quả kiểm định. Sản phẩm vẫn chờ phê duyệt.";
-            return RedirectToAction(nameof(Review), new { id });
+            if (publish)
+                await products.InspectAndPublishAsync(ActorId, id, form.ToRequest(), ct);
+            else
+                await products.InspectAsync(ActorId, id, form.ToRequest(), ct);
+            TempData["Message"] = publish
+                ? "Đã kiểm định và đăng bán sản phẩm."
+                : "Đã lưu kết quả kiểm định. Sản phẩm vẫn chờ phê duyệt.";
+            return publish ? RedirectToAction(nameof(Index)) : RedirectToAction(nameof(Review), new { id });
         }
         catch (Exception ex) when (ex is ProductConcurrencyException or DbUpdateConcurrencyException)
         {

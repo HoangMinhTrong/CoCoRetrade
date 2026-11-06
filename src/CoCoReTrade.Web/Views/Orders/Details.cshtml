@@ -17,9 +17,12 @@
     else
     {
         <div class="spec-row"><span>Người nhận</span><strong>@Model.RecipientName · @Model.RecipientPhone</strong></div>
-        @if (Model.Fulfillment == FulfillmentType.Pickup) { <div class="spec-row"><span>Giờ lấy tại CoCo</span><strong>@pickupAtStore (giờ Việt Nam)</strong></div><div class="spec-row"><span>Địa chỉ CoCo khi đặt</span><strong>@Model.PickupAddress</strong></div>
-            @if (Model.Status is OrderStatus.PendingProcessing or OrderStatus.ReadyForPickup) { <div class="alert alert-info mt-3">CoCo đang tạm giữ món đồ cho lịch lấy của bạn. Sản phẩm đã được ẩn khỏi cửa hàng.</div> }
-            @if (Model.PickupDeadlineAtUtc.HasValue) { <div class="alert alert-warning mt-3">Giá thỏa thuận áp dụng khi bạn đến nhận trước @(new DateTimeOffset(Model.PickupDeadlineAtUtc.Value, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(Shipping.StoreUtcOffsetHours)).ToString("dd/MM/yyyy HH:mm")) (giờ Việt Nam). Quá hạn chưa nhận và chưa thanh toán, đơn sẽ hủy và món đồ mở bán lại theo giá niêm yết.</div> }
+        @if (Model.Fulfillment == FulfillmentType.Pickup) {
+            @if (Model.PickupAtUtc.HasValue) { <div class="spec-row"><span>Giờ lấy tại CoCo</span><strong>@pickupAtStore (giờ Việt Nam)</strong></div> }
+            @if (Model.PickupDeadlineAtUtc.HasValue) { <div class="spec-row"><span>Hạn tới lấy</span><strong>@localTime(Model.PickupDeadlineAtUtc.Value) (giờ Việt Nam)</strong></div> }
+            <div class="spec-row"><span>Địa chỉ CoCo khi đặt</span><strong>@Model.PickupAddress</strong></div>
+            @if (Model.Status is OrderStatus.PendingProcessing or OrderStatus.ReadyForPickup) { <div class="alert alert-info mt-3">CoCo đang tạm giữ món đồ cho lịch lấy tại cửa hàng. Sản phẩm đã được ẩn khỏi cửa hàng.</div> }
+            @if (Model.OfferId.HasValue && Model.PickupDeadlineAtUtc.HasValue) { <div class="alert alert-warning mt-3">Giá thỏa thuận áp dụng khi bạn đến nhận trước hạn tới lấy. Quá hạn chưa nhận và chưa thanh toán, đơn sẽ hủy và món đồ mở bán lại theo giá niêm yết.</div> }
         }
         else { <div class="spec-row"><span>Giao tới</span><strong>@Model.StreetAddress, @Model.Ward, @Model.Province</strong></div>
             @if (!string.IsNullOrWhiteSpace(Model.DeliveryNote)) { <div class="spec-row"><span>Ghi chú giao hàng</span><strong>@Model.DeliveryNote</strong></div> }

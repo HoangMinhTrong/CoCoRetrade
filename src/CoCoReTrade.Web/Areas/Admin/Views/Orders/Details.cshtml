@@ -8,9 +8,10 @@
     <p><span class="status-pill">@(Model.Status == OrderStatus.Completed ? Model.Fulfillment == FulfillmentType.Shipping ? "Giao hàng thành công" : "Đã nhận tại CoCo" : UiText.For(Model.Status))</span> <span class="status-pill">Thanh toán: @UiText.For(Model.PaymentStatus)</span></p>
     <div class="spec-row"><span>Người nhận</span><strong>@Model.RecipientName · @Model.RecipientPhone</strong></div>
     <div class="spec-row"><span>Hình thức</span><strong>@UiText.For(Model.Fulfillment)</strong></div>
-    @if (Model.Fulfillment == FulfillmentType.Pickup) { <div class="spec-row"><span>Giờ lấy</span><strong>@pickupAtStore (giờ Việt Nam)</strong></div><div class="spec-row"><span>Địa chỉ CoCo khi đặt</span><strong>@Model.PickupAddress</strong></div>
-        @if (Model.Status is OrderStatus.PendingProcessing or OrderStatus.ReadyForPickup) { <div class="alert alert-info mt-3">Món đồ đang tạm giữ cho khách tới CoCo lấy và đã được ẩn khỏi sàn.</div> }
-        @if (Model.PickupDeadlineAtUtc.HasValue) { <div class="alert alert-warning mt-3">Đơn dùng giá thỏa thuận: phải nhận trước @(new DateTimeOffset(Model.PickupDeadlineAtUtc.Value, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(Shipping.StoreUtcOffsetHours)).ToString("dd/MM/yyyy HH:mm")) (giờ Việt Nam). Nếu không đến và chưa thanh toán, hệ thống hủy đơn và mở bán lại theo giá gốc.</div> }
+    @if (Model.Fulfillment == FulfillmentType.Pickup) {
+        @if (Model.PickupAtUtc.HasValue) { <div class="spec-row"><span>Giờ lấy</span><strong>@pickupAtStore (giờ Việt Nam)</strong></div> }
+        @if (Model.PickupDeadlineAtUtc.HasValue) { <div class="spec-row"><span>Hạn tới lấy</span><strong>@(new DateTimeOffset(Model.PickupDeadlineAtUtc.Value, TimeSpan.Zero).ToOffset(TimeSpan.FromHours(Shipping.StoreUtcOffsetHours)).ToString("dd/MM/yyyy HH:mm")) (giờ Việt Nam)</strong></div> }
+        <div class="spec-row"><span>Địa chỉ CoCo khi đặt</span><strong>@Model.PickupAddress</strong></div>
     }
     else { <div class="spec-row"><span>Giao tới</span><strong>@Model.StreetAddress, @Model.Ward, @Model.Province</strong></div>
         @if (!string.IsNullOrWhiteSpace(Model.DeliveryNote)) { <div class="spec-row"><span>Ghi chú cho người giao</span><strong>@Model.DeliveryNote</strong></div> }

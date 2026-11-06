@@ -34,6 +34,13 @@ public sealed class AdminInspectionController(IAdminProductService products) : C
     public Task<ActionResult<AdminProductDetails>> Record(Guid id, [FromForm] InspectionForm request, CancellationToken ct) =>
         Execute(() => products.InspectAsync(ActorId, id, request.ToRequest(), ct));
 
+    [HttpPost("{id:guid}/inspect-and-publish"), Authorize(Policy = StaffPermissions.Inspect),
+     Authorize(Policy = StaffPermissions.Publish)]
+    [Consumes("multipart/form-data"), RequestSizeLimit(55_000_000)]
+    public Task<ActionResult<AdminProductDetails>> RecordAndPublish(Guid id, [FromForm] InspectionForm request,
+        CancellationToken ct) =>
+        Execute(() => products.InspectAndPublishAsync(ActorId, id, request.ToRequest(), ct));
+
     [HttpPost("{id:guid}/cover"), Authorize(Policy = StaffPermissions.Inspect)]
     public Task<ActionResult<AdminProductDetails>> Cover(Guid id, [FromBody] SelectCoverRequest request, CancellationToken ct) =>
         Execute(() => products.SelectCoverAsync(ActorId, id, request.ImageId, request.ExpectedRowVersion, ct));

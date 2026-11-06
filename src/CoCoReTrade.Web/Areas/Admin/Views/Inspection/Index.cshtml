@@ -1,13 +1,14 @@
 @model IReadOnlyList<AdminProductItem>
-@{ ViewData["Title"] = "Ký gửi chờ kiểm định"; }
+@{ ViewData["Title"] = "Ký gửi chờ kiểm định"; var inspectedOnly = (bool?)ViewBag.InspectedOnly == true; }
 <header class="admin-page-header">
     <div><div class="eyebrow">Kiểm định CoCo</div><h1 class="page-title">Ký gửi chờ duyệt</h1><p class="subtitle mb-0">Kiểm tra hiện vật, hoàn thiện thông tin và xác nhận trước khi đăng bán.</p></div>
     <span class="admin-status admin-status--warning">@Model.Count sản phẩm trong danh sách</span>
 </header>
 <form method="get" class="panel admin-toolbar mb-4">
+    @if (inspectedOnly) { <input type="hidden" name="inspectedOnly" value="true" /> }
     <div class="flex-grow-1"><label class="form-label" for="inspectionSearch">Tìm sản phẩm ký gửi</label><input class="form-control" id="inspectionSearch" type="search" name="search" value="@ViewBag.Search" placeholder="Nhập mã chờ duyệt, tên sản phẩm hoặc người bán" /></div>
     <button class="btn btn-wine" type="submit"><svg class="icon" aria-hidden="true"><use href="/images/icons.svg#search" /></svg> Tìm kiếm</button>
-    @if (!string.IsNullOrWhiteSpace((string?)ViewBag.Search)) { <a class="btn btn-outline-wine" asp-action="Index">Xóa tìm kiếm</a> }
+    @if (!string.IsNullOrWhiteSpace((string?)ViewBag.Search)) { <a class="btn btn-outline-wine" asp-action="Index" asp-route-inspectedOnly="@inspectedOnly">Xóa tìm kiếm</a> }
 </form>
 @if (Model.Count == 0)
 {
